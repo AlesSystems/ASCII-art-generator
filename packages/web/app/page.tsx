@@ -10,7 +10,7 @@ import { loadImage, revokeThumbnail } from "@/lib/canvas-loader";
 import { useAscii } from "@/lib/use-ascii";
 import { useAnimation } from "@/lib/use-animation";
 import { buildAnimatedHtml } from "@/lib/animated-html";
-import { copyToClipboard, downloadText } from "@/lib/download";
+import { copyToClipboard, downloadText, htmlToPlainAscii } from "@/lib/download";
 import type { LoadedFile, OutputMode } from "@/lib/types";
 
 type RampName = "default" | "inverted" | "extended" | "custom";
@@ -24,7 +24,6 @@ interface State {
   customRamp: string;
   invert: boolean;
   outputMode: OutputMode;
-  zoom: number;
   mobileTab: SheetTab;
   renderTick: number;
   isPlaying: boolean;
@@ -38,7 +37,6 @@ type Action =
   | { type: "setCustomRamp"; v: string }
   | { type: "setInvert"; v: boolean }
   | { type: "setOutputMode"; v: OutputMode }
-  | { type: "setZoom"; v: number }
   | { type: "setMobileTab"; v: SheetTab }
   | { type: "rerender" }
   | { type: "setIsPlaying"; v: boolean };
@@ -51,7 +49,6 @@ const initialState: State = {
   customRamp: "",
   invert: false,
   outputMode: "plain",
-  zoom: 100,
   mobileTab: "basics",
   renderTick: 0,
   isPlaying: true,
@@ -66,7 +63,6 @@ function reducer(state: State, action: Action): State {
     case "setCustomRamp": return { ...state, customRamp: action.v };
     case "setInvert": return { ...state, invert: action.v };
     case "setOutputMode": return { ...state, outputMode: action.v };
-    case "setZoom": return { ...state, zoom: action.v };
     case "setMobileTab": return { ...state, mobileTab: action.v };
     case "rerender": return { ...state, renderTick: state.renderTick + 1 };
     case "setIsPlaying": return { ...state, isPlaying: action.v };
@@ -150,18 +146,22 @@ export default function Page() {
 
   const onCopy = useCallback(async () => {
     if (!currentAscii) return;
+    const plain =
+      state.outputMode === "color" ? htmlToPlainAscii(currentAscii) : currentAscii;
     try {
-      await copyToClipboard(currentAscii);
+      await copyToClipboard(plain);
     } catch {
       setError("Couldn't copy. Try selecting and copying manually.");
     }
-  }, [currentAscii]);
+  }, [currentAscii, state.outputMode]);
 
   const onDownloadTxt = useCallback(() => {
     if (!currentAscii) return;
     const base = state.file?.name.replace(/\.[^.]+$/, "") ?? "ascii";
-    downloadText(`${base}.txt`, currentAscii);
-  }, [currentAscii, state.file]);
+    const plain =
+      state.outputMode === "color" ? htmlToPlainAscii(currentAscii) : currentAscii;
+    downloadText(`${base}.txt`, plain);
+  }, [currentAscii, state.file, state.outputMode]);
 
   const onDownloadHtml = useCallback(() => {
     if (frames.length === 0) return;
@@ -194,12 +194,6 @@ export default function Page() {
     dispatch({ type: "setIsPlaying", v: !state.isPlaying });
   }, [state.isPlaying]);
 
-  const onZoomIn = useCallback(() => {
-    dispatch({ type: "setZoom", v: Math.min(200, state.zoom + 10) });
-  }, [state.zoom]);
-  const onZoomOut = useCallback(() => {
-    dispatch({ type: "setZoom", v: Math.max(50, state.zoom - 10) });
-  }, [state.zoom]);
   const onRerender = useCallback(() => {
     dispatch({ type: "rerender" });
   }, []);
@@ -251,9 +245,6 @@ export default function Page() {
           ascii={currentAscii}
           charWidth={charWidth}
           charHeight={charHeight}
-          zoom={state.zoom}
-          onZoomIn={onZoomIn}
-          onZoomOut={onZoomOut}
           onRerender={onRerender}
           frame={{ current: currentFrame + 1, total: Math.max(1, frames.length) }}
           showPlaceholder={!state.file}

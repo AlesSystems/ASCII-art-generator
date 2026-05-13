@@ -7,9 +7,6 @@ type PreviewPaneProps = {
   ascii: string;
   charWidth: number;
   charHeight: number;
-  zoom: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
   onRerender: () => void;
   frame: { current: number; total: number };
   showPlaceholder: boolean;
@@ -25,9 +22,6 @@ export function PreviewPane({
   ascii,
   charWidth,
   charHeight,
-  zoom,
-  onZoomIn,
-  onZoomOut,
   onRerender,
   frame,
   showPlaceholder,
@@ -44,22 +38,13 @@ export function PreviewPane({
   return (
     <section className="preview-pane">
       <div className="preview-toolbar">
-        <div className="tool-group">
-          <button type="button" className="tool-btn" aria-label="Zoom out" onClick={onZoomOut}>
-            −
-          </button>
-          <div className="zoom-val">{zoom}%</div>
-          <button type="button" className="tool-btn" aria-label="Zoom in" onClick={onZoomIn}>
-            +
-          </button>
-        </div>
         <div className="frame-counter">
           frame <strong>{currentStr}</strong> / <strong>{totalStr}</strong>
         </div>
         {showPlayButton && onPlayPause && (
           <button
             type="button"
-            className="tool-btn"
+            className="play-btn"
             aria-label={isPlaying ? "Pause animation" : "Play animation"}
             onClick={onPlayPause}
             title={isPlaying ? "Pause" : "Play"}
@@ -90,16 +75,10 @@ export function PreviewPane({
         {isHtml ? (
           <pre
             className="ascii-out"
-            style={{ ["--ascii-zoom" as string]: zoom / 100 }}
             dangerouslySetInnerHTML={{ __html: displayAscii }}
           />
         ) : (
-          <pre
-            className="ascii-out"
-            style={{ ["--ascii-zoom" as string]: zoom / 100 }}
-          >
-            {displayAscii}
-          </pre>
+          <pre className="ascii-out">{displayAscii}</pre>
         )}
         <div
           className="sticker"
