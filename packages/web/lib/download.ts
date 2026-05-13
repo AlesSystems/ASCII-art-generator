@@ -1,6 +1,19 @@
 'use client';
 
 /**
+ * Strips the `<span style="color:#RRGGBB">X</span>` wrappers emitted by the
+ * core's HTML color output, returning the underlying ASCII. Also decodes the
+ * three entities the core escapes (`&amp;`, `&lt;`, `&gt;`).
+ */
+export function htmlToPlainAscii(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+}
+
+/**
  * Copies text to the system clipboard.
  * Uses the modern Clipboard API when available; falls back to a
  * temporary textarea + execCommand for older/restricted contexts.

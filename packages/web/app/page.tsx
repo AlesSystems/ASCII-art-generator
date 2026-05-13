@@ -10,7 +10,7 @@ import { loadImage, revokeThumbnail } from "@/lib/canvas-loader";
 import { useAscii } from "@/lib/use-ascii";
 import { useAnimation } from "@/lib/use-animation";
 import { buildAnimatedHtml } from "@/lib/animated-html";
-import { copyToClipboard, downloadText } from "@/lib/download";
+import { copyToClipboard, downloadText, htmlToPlainAscii } from "@/lib/download";
 import type { LoadedFile, OutputMode } from "@/lib/types";
 
 type RampName = "default" | "inverted" | "extended" | "custom";
@@ -150,18 +150,22 @@ export default function Page() {
 
   const onCopy = useCallback(async () => {
     if (!currentAscii) return;
+    const plain =
+      state.outputMode === "color" ? htmlToPlainAscii(currentAscii) : currentAscii;
     try {
-      await copyToClipboard(currentAscii);
+      await copyToClipboard(plain);
     } catch {
       setError("Couldn't copy. Try selecting and copying manually.");
     }
-  }, [currentAscii]);
+  }, [currentAscii, state.outputMode]);
 
   const onDownloadTxt = useCallback(() => {
     if (!currentAscii) return;
     const base = state.file?.name.replace(/\.[^.]+$/, "") ?? "ascii";
-    downloadText(`${base}.txt`, currentAscii);
-  }, [currentAscii, state.file]);
+    const plain =
+      state.outputMode === "color" ? htmlToPlainAscii(currentAscii) : currentAscii;
+    downloadText(`${base}.txt`, plain);
+  }, [currentAscii, state.file, state.outputMode]);
 
   const onDownloadHtml = useCallback(() => {
     if (frames.length === 0) return;
