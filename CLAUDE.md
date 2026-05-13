@@ -69,8 +69,9 @@ Multiple agents may work on different modules simultaneously. Do not revert unex
 ## When completing tasks:
 
 1. Analyze repository structure
-2. Use relevant skills from .github/skills (if exists)
+2. Use relevant skills from .claude/skills (if exists)
 3. If have any questions or uncertanity, just ask developer to clarify.
+4. Commit per section, do not commit everything at once to keep ccommit changes more organized and readable.
 
 ## After implementation finish:
 

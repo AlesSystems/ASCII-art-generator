@@ -1,0 +1,26 @@
+{
+  "name": "@ascii-art/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "ascii-art": "./bin/ascii-art.js" },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "bin"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ascii-art/core": "*",
+    "commander": "^12.1.0",
+    "sharp": "0.33.5",
+    "clipboardy": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.10",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.2"
+  },
+  "engines": { "node": ">=20" }
+}
