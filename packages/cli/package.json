@@ -1,6 +1,6 @@
 {
   "name": "@ascii-art/cli",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "bin": { "ascii-art": "./bin/ascii-art.js" },
   "main": "dist/index.js",

@@ -1,0 +1,8 @@
+.claude
+.github
+docs
+packages/core/tests
+packages/cli/tests
+packages/web/tests
+**/*.test.ts
+**/*.test.tsx

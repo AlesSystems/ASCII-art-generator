@@ -1,7 +1,7 @@
 {
   "name": "ascii-art-generator",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "ASCII art generator — pure core, CLI, web. $0 budget.",
   "license": "MIT",
