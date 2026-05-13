@@ -838,3 +838,145 @@ html, body { height: 100%; }
   /* Leave room above the sheet for the preview */
   .frame .main { padding-bottom: 55vh; }
 }
+
+/* ---------- Static pages (Gallery, How it works) ---------- */
+.static-main {
+  flex: 1;
+  min-height: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 56px 28px 56px;
+  overflow-y: auto;
+}
+.static-card {
+  position: relative;
+  width: 100%;
+  max-width: 720px;
+  background: var(--surface);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 0 var(--ink);
+  padding: 56px 40px 40px;
+}
+.static-tag {
+  position: absolute;
+  top: -1px;
+  left: 24px;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--font-vt323), monospace;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 3px 10px 2px;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+}
+.static-tag .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  animation: blink 1.6s steps(2, start) infinite;
+}
+.static-h1 {
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
+  font-size: 56px;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  margin: 0 0 18px;
+  color: var(--ink);
+}
+.static-lead {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin: 0 0 24px;
+  max-width: 60ch;
+}
+.static-cta {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+.static-cta .btn {
+  text-decoration: none;
+}
+
+/* How it works — step blocks */
+.hiw-card .static-lead {
+  margin-bottom: 32px;
+}
+.hiw-step {
+  border-top: 1.5px dashed var(--ink);
+  padding-top: 20px;
+  margin-top: 20px;
+}
+.hiw-step:first-of-type {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.hiw-step p {
+  font-family: var(--font-inter), sans-serif;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  margin: 6px 0 10px;
+  max-width: 62ch;
+}
+.hiw-step p code {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 12.5px;
+  background: var(--soft-red);
+  border: 1px solid var(--ink);
+  padding: 0 4px;
+  border-radius: 2px;
+}
+.hiw-step strong {
+  color: var(--accent-hover);
+}
+.hiw-formula {
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 13px;
+  background: var(--soft-red);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin: 8px 0 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.hiw-privacy {
+  background: var(--soft-red);
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  padding: 16px 18px;
+  margin-top: 28px;
+}
+.hiw-privacy.hiw-step {
+  border-top: 1.5px solid var(--ink);
+}
+
+/* Mobile overrides for static pages */
+@media (max-width: 1023px) {
+  .static-main {
+    padding: 28px 14px 32px;
+  }
+  .static-card {
+    padding: 44px 22px 28px;
+  }
+  .static-h1 {
+    font-size: 36px;
+  }
+  .static-lead {
+    font-size: 14.5px;
+  }
+}
