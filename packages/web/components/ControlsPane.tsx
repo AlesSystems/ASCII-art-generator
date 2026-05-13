@@ -27,8 +27,6 @@ type ControlsPaneProps = {
     customRamp: string;
     invert: boolean;
     outputMode: OutputMode;
-    sobel: boolean;
-    dithering: boolean;
     renderMs: number | null;
   };
   on: {
@@ -40,8 +38,6 @@ type ControlsPaneProps = {
     customRamp: (s: string) => void;
     invert: (v: boolean) => void;
     outputMode: (v: OutputMode) => void;
-    sobel: (v: boolean) => void;
-    dithering: (v: boolean) => void;
     copy: () => void;
     downloadTxt: () => void;
     downloadHtml: () => void;
@@ -119,18 +115,6 @@ export function ControlsPane({ state, on }: ControlsPaneProps): JSX.Element {
           sub="dark pixels become light chars"
           on={state.invert}
           onChange={on.invert}
-        />
-        <ToggleRow
-          label="Edge detection (Sobel)"
-          sub="outlines only, like a sketch"
-          on={state.sobel}
-          onChange={on.sobel}
-        />
-        <ToggleRow
-          label="Dithering"
-          sub="Floyd–Steinberg, slow but pretty"
-          on={state.dithering}
-          onChange={on.dithering}
         />
       </div>
 

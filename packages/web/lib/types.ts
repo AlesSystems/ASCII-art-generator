@@ -21,6 +21,7 @@ export interface AsciiOpts {
   customRamp: string;
   invert: boolean;
   contrast: number;        // 0..200, 100 = identity
-  outputMode?: OutputMode; // controls color vs plain output
+  outputMode?: OutputMode; // controls color vs plain vs edges output
+  mode?: 'brightness' | 'edges'; // passed directly to core
   nonce?: number;          // bump to force a re-render without changing inputs
 }
