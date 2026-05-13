@@ -1,9 +1,12 @@
 "use client";
 
 import type { JSX } from "react";
+import { Dropzone } from "@/components/Dropzone";
+import { FileRow } from "@/components/FileRow";
 import { Slider } from "@/components/Slider";
 import { CharsetPicker } from "@/components/CharsetPicker";
 import { ToggleRow } from "@/components/ToggleRow";
+import { Segmented } from "@/components/Segmented";
 
 type RampName = "default" | "inverted" | "extended" | "custom";
 type OutputMode = "plain" | "color" | "edges";
@@ -62,6 +65,12 @@ const TABS: { value: SheetTab; label: string }[] = [
   { value: "export", label: "Export" },
 ];
 
+const OUTPUT_MODE_OPTIONS: { value: OutputMode; label: string }[] = [
+  { value: "plain", label: "Plain" },
+  { value: "color", label: "Color" },
+  { value: "edges", label: "Edges" },
+];
+
 export function MobileSheet({
   state,
   on,
@@ -94,72 +103,82 @@ export function MobileSheet({
       </div>
 
       {activeTab === "basics" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <Slider
-            label="Width"
-            value={state.width}
-            suffix=" ch"
-            min={40}
-            max={200}
-            onChange={on.width}
-          />
-          <Slider
-            label="Contrast"
-            value={state.contrast}
-            suffix="%"
-            min={0}
-            max={200}
-            onChange={on.contrast}
-          />
-          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-            <button
-              type="button"
-              className="btn primary"
-              style={{ flex: 1, fontSize: 12.5, padding: "10px" }}
-              onClick={on.copy}
-            >
-              Copy
-            </button>
-            <button
-              type="button"
-              className="btn"
-              style={{ flex: 1, fontSize: 12.5, padding: "10px" }}
-              onClick={on.downloadTxt}
-            >
-              .txt
-            </button>
-            <button
-              type="button"
-              className="btn"
-              style={{ flex: 1, fontSize: 12.5, padding: "10px" }}
-              onClick={on.downloadHtml}
-            >
-              .html
-            </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <div className="section-label">Source</div>
+            <Dropzone hasFile={state.file !== null} onFiles={on.files}>
+              {state.file !== null && (
+                <FileRow
+                  name={state.file.name}
+                  size={state.file.size}
+                  width={state.file.width}
+                  height={state.file.height}
+                  thumbnailUrl={state.file.thumbnailUrl}
+                  onRemove={on.removeFile}
+                />
+              )}
+            </Dropzone>
+          </div>
+
+          <div className="group">
+            <div className="section-label">Geometry</div>
+            <Slider
+              label="Width"
+              value={state.width}
+              suffix=" ch"
+              min={40}
+              max={200}
+              onChange={on.width}
+            />
+            <Slider
+              label="Contrast"
+              value={state.contrast}
+              suffix="%"
+              min={0}
+              max={200}
+              onChange={on.contrast}
+            />
           </div>
         </div>
       )}
 
       {activeTab === "advanced" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <CharsetPicker
-            value={state.ramp}
-            customRamp={state.customRamp}
-            onValueChange={on.ramp}
-            onCustomChange={on.customRamp}
-            previewChars={previewChars}
-          />
-          <ToggleRow
-            label="Invert colors"
-            sub="dark pixels become light chars"
-            on={state.invert}
-            onChange={on.invert}
-          />
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div className="group">
+            <div className="section-label">Character set</div>
+            <CharsetPicker
+              value={state.ramp}
+              customRamp={state.customRamp}
+              onValueChange={on.ramp}
+              onCustomChange={on.customRamp}
+              previewChars={previewChars}
+            />
+          </div>
+
+          <div className="group">
+            <div className="section-label">Adjustments</div>
+            <ToggleRow
+              label="Invert colors"
+              sub="dark pixels become light chars"
+              on={state.invert}
+              onChange={on.invert}
+            />
+          </div>
+
+          <div className="group">
+            <div className="section-label">Output mode</div>
+            <Segmented<OutputMode>
+              options={OUTPUT_MODE_OPTIONS}
+              value={state.outputMode}
+              onChange={on.outputMode}
+            />
+          </div>
         </div>
       )}
 
       {activeTab === "export" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div className="section-label">Export</div>
           <button type="button" className="btn primary" onClick={on.copy}>
             Copy to clipboard
           </button>
