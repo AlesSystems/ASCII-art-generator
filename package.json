@@ -1,0 +1,23 @@
+{
+  "name": "ascii-art-generator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "ASCII art generator — pure core, CLI, web. $0 budget.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
