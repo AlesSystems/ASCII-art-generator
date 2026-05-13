@@ -42,3 +42,60 @@ export function downsample(
 
   return { data, width: targetW, height: targetH };
 }
+
+export interface DownsampleRgbResult {
+  rgb: Uint8Array;
+  targetH: number;
+}
+
+/**
+ * Box-filter downsample of raw RGBA pixels to target width, returning
+ * interleaved RGB (length = targetW * targetH * 3).
+ * Uses the same 0.5 vertical correction as `downsample`.
+ */
+export function downsampleRgb(
+  rgba: Uint8ClampedArray,
+  srcW: number,
+  srcH: number,
+  targetW: number
+): DownsampleRgbResult {
+  const targetH = Math.max(1, Math.round((srcH / srcW) * targetW * 0.5));
+  const scaleX = srcW / targetW;
+  const scaleY = srcH / targetH;
+  const rgb = new Uint8Array(targetW * targetH * 3);
+
+  for (let ty = 0; ty < targetH; ty++) {
+    const srcY0 = ty * scaleY;
+    const srcY1 = srcY0 + scaleY;
+    const y0 = Math.floor(srcY0);
+    const y1 = Math.min(Math.ceil(srcY1), srcH);
+
+    for (let tx = 0; tx < targetW; tx++) {
+      const srcX0 = tx * scaleX;
+      const srcX1 = srcX0 + scaleX;
+      const x0 = Math.floor(srcX0);
+      const x1 = Math.min(Math.ceil(srcX1), srcW);
+
+      let sumR = 0, sumG = 0, sumB = 0, count = 0;
+      for (let sy = y0; sy < y1; sy++) {
+        for (let sx = x0; sx < x1; sx++) {
+          const base = (sy * srcW + sx) * 4;
+          sumR += rgba[base]!;
+          sumG += rgba[base + 1]!;
+          sumB += rgba[base + 2]!;
+          count++;
+        }
+      }
+      const out = (ty * targetW + tx) * 3;
+      if (count === 0) {
+        rgb[out] = 0; rgb[out + 1] = 0; rgb[out + 2] = 0;
+      } else {
+        rgb[out] = Math.round(sumR / count);
+        rgb[out + 1] = Math.round(sumG / count);
+        rgb[out + 2] = Math.round(sumB / count);
+      }
+    }
+  }
+
+  return { rgb, targetH };
+}
