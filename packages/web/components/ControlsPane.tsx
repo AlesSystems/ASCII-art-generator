@@ -41,7 +41,9 @@ type ControlsPaneProps = {
     copy: () => void;
     downloadTxt: () => void;
     downloadHtml: () => void;
+    downloadAnimatedHtml?: () => void;
   };
+  isAnimated?: boolean;
 };
 
 const RAMP_PREVIEWS: Record<RampName, string> = {
@@ -57,7 +59,7 @@ const OUTPUT_MODE_OPTIONS: { value: OutputMode; label: string }[] = [
   { value: "edges", label: "Edges" },
 ];
 
-export function ControlsPane({ state, on }: ControlsPaneProps): JSX.Element {
+export function ControlsPane({ state, on, isAnimated = false }: ControlsPaneProps): JSX.Element {
   const previewChars =
     state.ramp === "custom"
       ? state.customRamp
@@ -138,6 +140,8 @@ export function ControlsPane({ state, on }: ControlsPaneProps): JSX.Element {
         onDownloadTxt={on.downloadTxt}
         onDownloadHtml={on.downloadHtml}
         renderMs={state.renderMs}
+        isAnimated={isAnimated}
+        onDownloadAnimatedHtml={on.downloadAnimatedHtml}
       />
     </aside>
   );

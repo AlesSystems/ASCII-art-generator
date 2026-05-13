@@ -7,6 +7,9 @@ type ActionButtonsProps = {
   onDownloadTxt: () => void;
   onDownloadHtml: () => void;
   renderMs: number | null;
+  /** If true, show the "Download animated HTML" button */
+  isAnimated?: boolean;
+  onDownloadAnimatedHtml?: () => void;
 };
 
 export function ActionButtons({
@@ -14,6 +17,8 @@ export function ActionButtons({
   onDownloadTxt,
   onDownloadHtml,
   renderMs,
+  isAnimated = false,
+  onDownloadAnimatedHtml,
 }: ActionButtonsProps): JSX.Element {
   return (
     <div>
@@ -33,6 +38,11 @@ export function ActionButtons({
         <button type="button" className="btn" onClick={onDownloadHtml}>
           Download .html
         </button>
+        {isAnimated && onDownloadAnimatedHtml && (
+          <button type="button" className="btn" onClick={onDownloadAnimatedHtml}>
+            Download animated HTML
+          </button>
+        )}
       </div>
       <div
         style={{
