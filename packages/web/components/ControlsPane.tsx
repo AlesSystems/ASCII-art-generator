@@ -51,7 +51,7 @@ type ControlsPaneProps = {
 const RAMP_PREVIEWS: Record<RampName, string> = {
   default: " .:-=+*#%@",
   inverted: "@%#*+=-:. ",
-  extended: " .'`^\",:;Il",
+  extended: " .'`^\",;Il!",
   custom: "",
 };
 

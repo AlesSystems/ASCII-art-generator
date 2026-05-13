@@ -54,7 +54,7 @@ type MobileSheetProps = {
 const RAMP_PREVIEWS: Record<RampName, string> = {
   default: " .:-=+*#%@",
   inverted: "@%#*+=-:. ",
-  extended: " .'`^\",:;Il",
+  extended: " .'`^\",;Il!",
   custom: "",
 };
 
@@ -79,11 +79,13 @@ export function MobileSheet({
     <div className="mobile-sheet">
       <div className="sheet-handle" />
 
-      <div className="sheet-tabs">
+      <div className="sheet-tabs" role="tablist">
         {TABS.map((tab) => (
           <button
             key={tab.value}
             type="button"
+            role="tab"
+            aria-selected={activeTab === tab.value}
             className={"sheet-tab" + (activeTab === tab.value ? " active" : "")}
             onClick={() => onTabChange(tab.value)}
           >

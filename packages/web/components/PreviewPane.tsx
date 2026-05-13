@@ -59,7 +59,7 @@ export function PreviewPane({
         <div className="dither-corner bl" />
         <pre
           className="ascii-out"
-          style={{ fontSize: `${14 * zoom / 100}px` }}
+          style={{ ["--ascii-zoom" as string]: zoom / 100 }}
         >
           {displayAscii}
         </pre>

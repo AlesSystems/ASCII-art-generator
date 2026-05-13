@@ -11,24 +11,28 @@ type DropzoneProps = {
 
 export function Dropzone({ hasFile, onFiles, children }: DropzoneProps): JSX.Element {
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
+    dragDepth.current += 1;
     setIsDragging(true);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragging(true);
   };
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    dragDepth.current = 0;
     setIsDragging(false);
     if (e.dataTransfer.files.length > 0) {
       onFiles(e.dataTransfer.files);

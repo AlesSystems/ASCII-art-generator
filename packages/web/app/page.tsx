@@ -26,6 +26,7 @@ interface State {
   dithering: boolean;
   zoom: number;
   mobileTab: SheetTab;
+  renderTick: number;
 }
 
 type Action =
@@ -39,7 +40,8 @@ type Action =
   | { type: "setSobel"; v: boolean }
   | { type: "setDithering"; v: boolean }
   | { type: "setZoom"; v: number }
-  | { type: "setMobileTab"; v: SheetTab };
+  | { type: "setMobileTab"; v: SheetTab }
+  | { type: "rerender" };
 
 const initialState: State = {
   file: null,
@@ -53,6 +55,7 @@ const initialState: State = {
   dithering: false,
   zoom: 100,
   mobileTab: "basics",
+  renderTick: 0,
 };
 
 function reducer(state: State, action: Action): State {
@@ -68,6 +71,7 @@ function reducer(state: State, action: Action): State {
     case "setDithering": return { ...state, dithering: action.v };
     case "setZoom": return { ...state, zoom: action.v };
     case "setMobileTab": return { ...state, mobileTab: action.v };
+    case "rerender": return { ...state, renderTick: state.renderTick + 1 };
   }
 }
 
@@ -89,7 +93,10 @@ export default function Page() {
     ramp: state.ramp,
     customRamp: state.customRamp,
     invert: state.invert,
+    nonce: state.renderTick,
   });
+
+  const currentFile = state.file;
 
   const onFiles = useCallback(async (files: FileList) => {
     const file = files.item(0);
@@ -97,6 +104,9 @@ export default function Page() {
     setError(null);
     try {
       const loaded = await loadImage(file);
+      // Revoke the previous file's URL before swapping in the new one so we
+      // never leak when a user uploads sequentially without removing first.
+      if (currentFile) revokeThumbnail(currentFile.thumbnailUrl);
       dispatch({
         type: "setFile",
         file: {
@@ -111,9 +121,8 @@ export default function Page() {
     } catch {
       setError("Hmm, that didn't decode. Try a different image?");
     }
-  }, []);
+  }, [currentFile]);
 
-  const currentFile = state.file;
   const onRemoveFile = useCallback(() => {
     if (currentFile) revokeThumbnail(currentFile.thumbnailUrl);
     dispatch({ type: "setFile", file: null });
@@ -154,8 +163,8 @@ export default function Page() {
     dispatch({ type: "setZoom", v: Math.max(50, state.zoom - 10) });
   }, [state.zoom]);
   const onRerender = useCallback(() => {
-    dispatch({ type: "setZoom", v: state.zoom });
-  }, [state.zoom]);
+    dispatch({ type: "rerender" });
+  }, []);
 
   const lines = ascii ? ascii.split("\n") : [];
   const charHeight = lines.length;

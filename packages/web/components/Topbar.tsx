@@ -1,5 +1,3 @@
-"use client";
-
 import type { JSX } from "react";
 
 type TopbarProps = { compact?: boolean };

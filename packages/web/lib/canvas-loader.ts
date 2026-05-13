@@ -25,17 +25,29 @@ export async function loadImage(file: File): Promise<{
     el.src = url;
   });
 
-  const w = img.naturalWidth;
-  const h = img.naturalHeight;
+  const naturalW = img.naturalWidth;
+  const naturalH = img.naturalHeight;
 
-  if (w === 0 || h === 0) {
+  if (naturalW === 0 || naturalH === 0) {
     URL.revokeObjectURL(url);
     throw new Error(
-      `Image has zero dimensions (${w}×${h}): ${file.name}`
+      `Image has zero dimensions (${naturalW}×${naturalH}): ${file.name}`
     );
   }
 
-  // 3. Create an offscreen canvas at the image's natural dimensions.
+  // iOS Safari caps canvas at ~16M pixels and will produce a blank buffer
+  // beyond that. Downscale large images to fit within MAX_PIXELS while
+  // preserving aspect ratio — the ASCII output is width-bounded anyway,
+  // so the visual impact is negligible.
+  const MAX_PIXELS = 4096 * 4096;
+  let w = naturalW;
+  let h = naturalH;
+  if (naturalW * naturalH > MAX_PIXELS) {
+    const scale = Math.sqrt(MAX_PIXELS / (naturalW * naturalH));
+    w = Math.max(1, Math.floor(naturalW * scale));
+    h = Math.max(1, Math.floor(naturalH * scale));
+  }
+
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
@@ -46,7 +58,7 @@ export async function loadImage(file: File): Promise<{
     URL.revokeObjectURL(url);
     throw new Error('Could not obtain 2D canvas context');
   }
-  ctx.drawImage(img, 0, 0);
+  ctx.drawImage(img, 0, 0, w, h);
 
   // 5. Extract raw RGBA pixel data.
   const imageData = ctx.getImageData(0, 0, w, h);

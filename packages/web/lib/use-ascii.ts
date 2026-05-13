@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { pixelsToAscii, type RampName } from '@ascii-art/core';
 import { applyContrast } from './contrast';
 import type { AsciiOpts, LoadedFile } from './types';
@@ -34,8 +34,15 @@ export function useAscii(
   const [isComputing, setIsComputing] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
+  // Memoize the contrast-adjusted RGBA buffer so it only recomputes when the
+  // source image or contrast value changes (not on every width/ramp tweak).
+  const adjustedRgba = useMemo(() => {
+    if (!file) return null;
+    return applyContrast(file.image.data, opts.contrast);
+  }, [file, opts.contrast]);
+
   useEffect(() => {
-    if (!file) {
+    if (!file || !adjustedRgba) {
       setState({ ascii: '', renderMs: null });
       setIsComputing(false);
       return;
@@ -43,7 +50,6 @@ export function useAscii(
 
     setIsComputing(true);
 
-    // Clear any pending debounce timer before scheduling a new one.
     if (timeoutRef.current !== null) {
       window.clearTimeout(timeoutRef.current);
     }
@@ -51,18 +57,12 @@ export function useAscii(
     timeoutRef.current = window.setTimeout(() => {
       const t0 = performance.now();
 
-      // Apply contrast adjustment (returns the same buffer when contrast===100).
-      const rgba = applyContrast(file.image.data, opts.contrast);
-
-      // Resolve ramp: 'custom' uses the free-form string; named presets pass
-      // the key directly. Fall back to the default ramp if customRamp is empty
-      // to avoid a divide-by-zero inside core's mapToRamp.
       const rampArg: string | RampName =
         opts.ramp === 'custom'
           ? opts.customRamp || ' .:-=+*#%@'
           : opts.ramp;
 
-      const ascii = pixelsToAscii(rgba, file.width, file.height, {
+      const ascii = pixelsToAscii(adjustedRgba, file.width, file.height, {
         width: opts.width,
         ramp: rampArg,
         invert: opts.invert,
@@ -78,10 +78,7 @@ export function useAscii(
         window.clearTimeout(timeoutRef.current);
       }
     };
-  // Primitive fields used individually so the effect only re-runs when a
-  // value actually changes, not on every new opts object reference.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [file, opts.width, opts.ramp, opts.customRamp, opts.invert, opts.contrast]);
+  }, [file, adjustedRgba, opts.width, opts.ramp, opts.customRamp, opts.invert, opts.nonce]);
 
   return { ascii: state.ascii, renderMs: state.renderMs, isComputing };
 }

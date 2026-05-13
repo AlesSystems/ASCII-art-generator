@@ -567,7 +567,7 @@ input[type="range"].retro::-moz-range-thumb {
 
 .ascii-out {
   font-family: "JetBrains Mono", "Geist Mono", monospace;
-  font-size: 14px;
+  font-size: calc(14px * var(--ascii-zoom, 1));
   line-height: 1.0;
   white-space: pre;
   color: var(--ink);
@@ -653,7 +653,7 @@ input[type="range"].retro::-moz-range-thumb {
   flex: 1;
 }
 .mobile .ascii-out {
-  font-size: 8px;
+  font-size: calc(8px * var(--ascii-zoom, 1));
   line-height: 1.0;
 }
 .mobile .preview-card {
@@ -819,7 +819,7 @@ html, body { height: 100%; }
   .frame .controls { display: none; }
   .frame .footer { display: none; }
   .frame .preview-pane { padding: 14px 14px 0; padding-bottom: 0; }
-  .frame .ascii-out { font-size: 8px; line-height: 1.0; }
+  .frame .ascii-out { font-size: calc(8px * var(--ascii-zoom, 1)); line-height: 1.0; }
   .frame .preview-card { min-height: 360px; }
   /* Show and pin the bottom sheet */
   .mobile-sheet {
