@@ -18,6 +18,7 @@ type PreviewPaneProps = {
   showPlayButton?: boolean;
   isPlaying?: boolean;
   onPlayPause?: () => void;
+  isComputing?: boolean;
 };
 
 export function PreviewPane({
@@ -34,6 +35,7 @@ export function PreviewPane({
   showPlayButton = false,
   isPlaying = true,
   onPlayPause,
+  isComputing = false,
 }: PreviewPaneProps): JSX.Element {
   const displayAscii = ascii || (showPlaceholder ? ASCII_CAT : "");
   const currentStr = String(frame.current).padStart(2, "0");
@@ -65,8 +67,16 @@ export function PreviewPane({
             {isPlaying ? "⏸" : "▶"}
           </button>
         )}
-        <button type="button" className="re-render" onClick={onRerender}>
-          ↻ re-render
+        <button
+          type="button"
+          className="re-render"
+          onClick={onRerender}
+          disabled={isComputing || !ascii}
+          aria-label="Re-render ASCII output"
+          title="Re-render"
+        >
+          <span className={`re-render-icon${isComputing ? " spinning" : ""}`}>↻</span>
+          re-render
         </button>
       </div>
 
@@ -95,7 +105,7 @@ export function PreviewPane({
           className="sticker"
           style={{ bottom: 16, right: 18, transform: "rotate(3deg)" }}
         >
-          NEW! v0.4
+          NEW! v1.0
         </div>
       </div>
     </section>

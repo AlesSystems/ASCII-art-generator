@@ -86,7 +86,7 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
 
   // useAscii now returns frames (one per GIF frame, or one for static images)
-  const { frames, renderMs } = useAscii(state.file, {
+  const { frames, renderMs, isComputing } = useAscii(state.file, {
     width: state.width,
     contrast: state.contrast,
     ramp: state.ramp,
@@ -261,6 +261,7 @@ export default function Page() {
           showPlayButton={isAnimated}
           isPlaying={state.isPlaying}
           onPlayPause={onPlayPause}
+          isComputing={isComputing}
         />
         <MobileSheet
           state={stateForControls}

@@ -528,7 +528,15 @@ input[type="range"].retro::-moz-range-thumb {
   cursor: pointer;
   font-family: "JetBrains Mono", monospace;
 }
-.re-render:hover { background: var(--soft-red); }
+.re-render:hover:not(:disabled) { background: var(--soft-red); }
+.re-render:disabled { opacity: 0.55; cursor: not-allowed; }
+.re-render-icon { display: inline-block; transition: transform 0.4s ease; }
+.re-render:hover:not(:disabled) .re-render-icon { transform: rotate(-90deg); }
+.re-render-icon.spinning { animation: re-render-spin 0.8s linear infinite; }
+@keyframes re-render-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 /* The big ASCII canvas */
 .preview-card {
