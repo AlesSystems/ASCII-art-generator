@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { Topbar } from "@/components/Topbar";
 import { Footer } from "@/components/Footer";
 import { ControlsPane } from "@/components/ControlsPane";
@@ -8,6 +8,8 @@ import { MobileSheet } from "@/components/MobileSheet";
 import { PreviewPane } from "@/components/PreviewPane";
 import { loadImage, revokeThumbnail } from "@/lib/canvas-loader";
 import { useAscii } from "@/lib/use-ascii";
+import { useAnimation } from "@/lib/use-animation";
+import { buildAnimatedHtml } from "@/lib/animated-html";
 import { copyToClipboard, downloadText } from "@/lib/download";
 import type { LoadedFile, OutputMode } from "@/lib/types";
 
@@ -25,6 +27,7 @@ interface State {
   zoom: number;
   mobileTab: SheetTab;
   renderTick: number;
+  isPlaying: boolean;
 }
 
 type Action =
@@ -37,7 +40,8 @@ type Action =
   | { type: "setOutputMode"; v: OutputMode }
   | { type: "setZoom"; v: number }
   | { type: "setMobileTab"; v: SheetTab }
-  | { type: "rerender" };
+  | { type: "rerender" }
+  | { type: "setIsPlaying"; v: boolean };
 
 const initialState: State = {
   file: null,
@@ -50,11 +54,12 @@ const initialState: State = {
   zoom: 100,
   mobileTab: "basics",
   renderTick: 0,
+  isPlaying: true,
 };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
-    case "setFile": return { ...state, file: action.file };
+    case "setFile": return { ...state, file: action.file, isPlaying: true };
     case "setWidth": return { ...state, width: action.v };
     case "setContrast": return { ...state, contrast: action.v };
     case "setRamp": return { ...state, ramp: action.v };
@@ -64,6 +69,7 @@ function reducer(state: State, action: Action): State {
     case "setZoom": return { ...state, zoom: action.v };
     case "setMobileTab": return { ...state, mobileTab: action.v };
     case "rerender": return { ...state, renderTick: state.renderTick + 1 };
+    case "setIsPlaying": return { ...state, isPlaying: action.v };
   }
 }
 
@@ -79,7 +85,8 @@ export default function Page() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [error, setError] = useState<string | null>(null);
 
-  const { ascii, renderMs } = useAscii(state.file, {
+  // useAscii now returns frames (one per GIF frame, or one for static images)
+  const { frames, renderMs } = useAscii(state.file, {
     width: state.width,
     contrast: state.contrast,
     ramp: state.ramp,
@@ -89,6 +96,17 @@ export default function Page() {
     nonce: state.renderTick,
   });
 
+  // Per-frame delays from the loaded file; fall back to [0] for static images.
+  // Memoized to avoid new array reference on every render (used in useCallback deps).
+  const delaysMs = useMemo(
+    () => state.file?.frames.map((f) => f.delayMs) ?? [0],
+    [state.file]
+  );
+  const isAnimated = state.file?.isAnimated ?? false;
+
+  // Animation loop — drives currentFrame based on per-frame delays
+  const { currentFrame } = useAnimation(frames.length, delaysMs, state.isPlaying && isAnimated);
+
   const currentFile = state.file;
 
   const onFiles = useCallback(async (files: FileList) => {
@@ -97,8 +115,7 @@ export default function Page() {
     setError(null);
     try {
       const loaded = await loadImage(file);
-      // Revoke the previous file's URL before swapping in the new one so we
-      // never leak when a user uploads sequentially without removing first.
+      // Revoke the previous file's URL before swapping in the new one.
       if (currentFile) revokeThumbnail(currentFile.thumbnailUrl);
       dispatch({
         type: "setFile",
@@ -108,7 +125,8 @@ export default function Page() {
           width: loaded.width,
           height: loaded.height,
           thumbnailUrl: loaded.thumbnailUrl,
-          image: loaded.image,
+          frames: loaded.frames,
+          isAnimated: loaded.isAnimated,
         },
       });
     } catch {
@@ -127,31 +145,54 @@ export default function Page() {
     };
   }, [currentFile]);
 
+  // Current ASCII frame to display (empty if not yet rendered)
+  const currentAscii = frames[currentFrame] ?? "";
+
   const onCopy = useCallback(async () => {
-    if (!ascii) return;
+    if (!currentAscii) return;
     try {
-      await copyToClipboard(ascii);
+      await copyToClipboard(currentAscii);
     } catch {
       setError("Couldn't copy. Try selecting and copying manually.");
     }
-  }, [ascii]);
+  }, [currentAscii]);
 
   const onDownloadTxt = useCallback(() => {
-    if (!ascii) return;
+    if (!currentAscii) return;
     const base = state.file?.name.replace(/\.[^.]+$/, "") ?? "ascii";
-    downloadText(`${base}.txt`, ascii);
-  }, [ascii, state.file]);
+    downloadText(`${base}.txt`, currentAscii);
+  }, [currentAscii, state.file]);
 
   const onDownloadHtml = useCallback(() => {
-    if (!ascii) return;
+    if (frames.length === 0) return;
     const base = state.file?.name.replace(/\.[^.]+$/, "") ?? "ascii";
-    // In color mode, ascii already contains valid <span> markup — use it directly.
-    // In plain mode, HTML-escape the raw text before inserting into <pre>.
-    const preContent =
-      state.outputMode === "color" ? ascii : escapeHtml(ascii);
-    const html = `<!doctype html><meta charset="utf-8"><title>${base}</title><pre style="font-family:JetBrains Mono,monospace;font-size:10px;line-height:1;letter-spacing:-0.02em;white-space:pre">${preContent}</pre>`;
-    downloadText(`${base}.html`, html, "text/html");
-  }, [ascii, state.file, state.outputMode]);
+
+    if (isAnimated && frames.length > 1) {
+      // Animated: download a full animated HTML file
+      const format = state.outputMode === "color" ? "html" : "text";
+      const html = buildAnimatedHtml(frames, delaysMs, base, format);
+      downloadText(`${base}.html`, html, "text/html");
+    } else {
+      // Static: single-frame HTML wrap
+      const ascii = frames[0] ?? "";
+      const preContent =
+        state.outputMode === "color" ? ascii : escapeHtml(ascii);
+      const html = `<!doctype html><meta charset="utf-8"><title>${base}</title><pre style="font-family:JetBrains Mono,monospace;font-size:10px;line-height:1;letter-spacing:-0.02em;white-space:pre">${preContent}</pre>`;
+      downloadText(`${base}.html`, html, "text/html");
+    }
+  }, [frames, delaysMs, isAnimated, state.file, state.outputMode]);
+
+  const onDownloadAnimatedHtml = useCallback(() => {
+    if (!isAnimated || frames.length === 0) return;
+    const base = state.file?.name.replace(/\.[^.]+$/, "") ?? "ascii";
+    const format = state.outputMode === "color" ? "html" : "text";
+    const html = buildAnimatedHtml(frames, delaysMs, base, format);
+    downloadText(`${base}-animated.html`, html, "text/html");
+  }, [frames, delaysMs, isAnimated, state.file, state.outputMode]);
+
+  const onPlayPause = useCallback(() => {
+    dispatch({ type: "setIsPlaying", v: !state.isPlaying });
+  }, [state.isPlaying]);
 
   const onZoomIn = useCallback(() => {
     dispatch({ type: "setZoom", v: Math.min(200, state.zoom + 10) });
@@ -163,7 +204,7 @@ export default function Page() {
     dispatch({ type: "rerender" });
   }, []);
 
-  const lines = ascii ? ascii.split("\n") : [];
+  const lines = currentAscii ? currentAscii.split("\n") : [];
   const charHeight = lines.length;
   const charWidth = lines[0]?.length ?? state.width;
 
@@ -198,30 +239,35 @@ export default function Page() {
     copy: onCopy,
     downloadTxt: onDownloadTxt,
     downloadHtml: onDownloadHtml,
+    downloadAnimatedHtml: onDownloadAnimatedHtml,
   };
 
   return (
     <div className="frame">
       <Topbar />
       <div className="main">
-        <ControlsPane state={stateForControls} on={on} />
+        <ControlsPane state={stateForControls} on={on} isAnimated={isAnimated} />
         <PreviewPane
-          ascii={ascii}
+          ascii={currentAscii}
           charWidth={charWidth}
           charHeight={charHeight}
           zoom={state.zoom}
           onZoomIn={onZoomIn}
           onZoomOut={onZoomOut}
           onRerender={onRerender}
-          frame={{ current: 1, total: 1 }}
+          frame={{ current: currentFrame + 1, total: Math.max(1, frames.length) }}
           showPlaceholder={!state.file}
           isHtml={state.outputMode === "color"}
+          showPlayButton={isAnimated}
+          isPlaying={state.isPlaying}
+          onPlayPause={onPlayPause}
         />
         <MobileSheet
           state={stateForControls}
           on={on}
           activeTab={state.mobileTab}
           onTabChange={(t) => dispatch({ type: "setMobileTab", v: t })}
+          isAnimated={isAnimated}
         />
       </div>
       <Footer />

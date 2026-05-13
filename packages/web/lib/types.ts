@@ -6,13 +6,19 @@ export type Ramp = RampName | 'custom';
 
 export type OutputMode = 'plain' | 'color' | 'edges';
 
+export interface FrameImage {
+  image: ImageData;
+  delayMs: number; // 0 for static (single-frame) images
+}
+
 export interface LoadedFile {
   name: string;
   size: number;        // bytes
   width: number;       // image px
   height: number;
   thumbnailUrl: string; // objectURL for <img src>
-  image: ImageData;    // raw pixel buffer for conversion
+  frames: FrameImage[]; // length >= 1; static images have 1 frame
+  isAnimated: boolean;
 }
 
 export interface AsciiOpts {

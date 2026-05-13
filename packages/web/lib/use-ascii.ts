@@ -1,49 +1,73 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { pixelsToAscii, type RampName } from '@ascii-art/core';
+import { useEffect, useRef, useState } from 'react';
+import type { RampName } from '@ascii-art/core';
 import { applyContrast } from './contrast';
 import type { AsciiOpts, LoadedFile } from './types';
-
-interface AsciiState {
-  ascii: string;
-  renderMs: number | null;
-}
+import type { WorkerRequest, WorkerResponse } from './ascii-worker';
 
 /**
- * React hook that converts a loaded image file to ASCII art whenever its
- * inputs change, debounced by ~120 ms to keep slider drag smooth.
+ * React hook that converts all frames of a loaded image file to ASCII art
+ * whenever its inputs change, debounced by ~120 ms to keep slider drag smooth.
+ *
+ * Conversion runs inside a Web Worker so playback stays smooth on the main
+ * thread. Stale responses (from superseded requests) are discarded via the
+ * incrementing `id` field.
  *
  * Returns:
- *   ascii       — the rendered ASCII string (empty string before first render)
- *   renderMs    — milliseconds taken by the last conversion (null until first)
- *   isComputing — true while the debounce timer is pending or conversion runs
+ *   frames      — array of ASCII strings, one per frame (empty before first render)
+ *   renderMs    — milliseconds for the last conversion batch (null until first)
+ *   isComputing — true while a conversion is in-flight
  */
 export function useAscii(
   file: LoadedFile | null,
   opts: AsciiOpts
 ): {
-  ascii: string;
+  frames: string[];
   renderMs: number | null;
   isComputing: boolean;
 } {
-  const [state, setState] = useState<AsciiState>({
-    ascii: '',
-    renderMs: null,
-  });
+  const [frames, setFrames] = useState<string[]>([]);
+  const [renderMs, setRenderMs] = useState<number | null>(null);
   const [isComputing, setIsComputing] = useState(false);
+
+  const workerRef = useRef<Worker | null>(null);
+  const requestIdRef = useRef(0);
   const timeoutRef = useRef<number | null>(null);
 
-  // Memoize the contrast-adjusted RGBA buffer so it only recomputes when the
-  // source image or contrast value changes (not on every width/ramp tweak).
-  const adjustedRgba = useMemo(() => {
-    if (!file) return null;
-    return applyContrast(file.image.data, opts.contrast);
-  }, [file, opts.contrast]);
-
+  // Spawn the worker on mount, terminate on unmount.
   useEffect(() => {
-    if (!file || !adjustedRgba) {
-      setState({ ascii: '', renderMs: null });
+    const worker = new Worker(
+      new URL('./ascii-worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    workerRef.current = worker;
+
+    worker.onmessage = (evt: MessageEvent<WorkerResponse>) => {
+      const { id, ascii, renderMs: ms } = evt.data;
+      // Discard stale responses from superseded requests
+      if (id !== requestIdRef.current) return;
+      setFrames(ascii);
+      setRenderMs(ms);
+      setIsComputing(false);
+    };
+
+    worker.onerror = (err) => {
+      console.error('ascii-worker error', err);
+      setIsComputing(false);
+    };
+
+    return () => {
+      worker.terminate();
+      workerRef.current = null;
+    };
+  }, []);
+
+  // Re-run whenever file or opts change (debounced 120ms).
+  useEffect(() => {
+    if (!file) {
+      setFrames([]);
+      setRenderMs(null);
       setIsComputing(false);
       return;
     }
@@ -55,7 +79,8 @@ export function useAscii(
     }
 
     timeoutRef.current = window.setTimeout(() => {
-      const t0 = performance.now();
+      const worker = workerRef.current;
+      if (!worker) return;
 
       const rampArg: string | RampName =
         opts.ramp === 'custom'
@@ -63,17 +88,27 @@ export function useAscii(
           : opts.ramp;
 
       const isEdges = opts.outputMode === 'edges' || opts.mode === 'edges';
-      const ascii = pixelsToAscii(adjustedRgba, file.width, file.height, {
+      const coreOpts = {
         width: opts.width,
         ramp: rampArg,
         invert: opts.invert,
-        output: opts.outputMode === 'color' ? 'html' : 'plain',
-        mode: isEdges ? 'edges' : 'brightness',
+        output: (opts.outputMode === 'color' ? 'html' : 'plain') as 'html' | 'plain',
+        mode: (isEdges ? 'edges' : 'brightness') as 'edges' | 'brightness',
+      };
+
+      // Apply contrast adjustment to each frame's RGBA before sending to worker.
+      const workerFrames = file.frames.map((f) => {
+        const adjusted = applyContrast(f.image.data, opts.contrast);
+        return {
+          rgba: new Uint8ClampedArray(adjusted),
+          width: f.image.width,
+          height: f.image.height,
+        };
       });
 
-      const renderMs = Math.round(performance.now() - t0);
-      setState({ ascii, renderMs });
-      setIsComputing(false);
+      const id = ++requestIdRef.current;
+      const request: WorkerRequest = { id, frames: workerFrames, opts: coreOpts };
+      worker.postMessage(request);
     }, 120);
 
     return () => {
@@ -81,7 +116,17 @@ export function useAscii(
         window.clearTimeout(timeoutRef.current);
       }
     };
-  }, [file, adjustedRgba, opts.width, opts.ramp, opts.customRamp, opts.invert, opts.outputMode, opts.mode, opts.nonce]);
+  }, [
+    file,
+    opts.width,
+    opts.ramp,
+    opts.customRamp,
+    opts.invert,
+    opts.contrast,
+    opts.outputMode,
+    opts.mode,
+    opts.nonce,
+  ]);
 
-  return { ascii: state.ascii, renderMs: state.renderMs, isComputing };
+  return { frames, renderMs, isComputing };
 }

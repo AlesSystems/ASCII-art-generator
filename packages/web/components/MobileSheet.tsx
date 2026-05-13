@@ -38,6 +38,7 @@ type MobileSheetOn = {
   copy: () => void;
   downloadTxt: () => void;
   downloadHtml: () => void;
+  downloadAnimatedHtml?: () => void;
 };
 
 type MobileSheetProps = {
@@ -45,6 +46,7 @@ type MobileSheetProps = {
   on: MobileSheetOn;
   activeTab: SheetTab;
   onTabChange: (t: SheetTab) => void;
+  isAnimated?: boolean;
 };
 
 const RAMP_PREVIEWS: Record<RampName, string> = {
@@ -65,6 +67,7 @@ export function MobileSheet({
   on,
   activeTab,
   onTabChange,
+  isAnimated = false,
 }: MobileSheetProps): JSX.Element {
   const previewChars =
     state.ramp === "custom"
@@ -166,6 +169,11 @@ export function MobileSheet({
           <button type="button" className="btn" onClick={on.downloadHtml}>
             Download .html
           </button>
+          {isAnimated && on.downloadAnimatedHtml && (
+            <button type="button" className="btn" onClick={on.downloadAnimatedHtml}>
+              Download animated HTML
+            </button>
+          )}
         </div>
       )}
     </div>

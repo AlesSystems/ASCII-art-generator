@@ -14,6 +14,10 @@ type PreviewPaneProps = {
   frame: { current: number; total: number };
   showPlaceholder: boolean;
   isHtml?: boolean;
+  /** Whether to show the play/pause button (only for animated GIFs) */
+  showPlayButton?: boolean;
+  isPlaying?: boolean;
+  onPlayPause?: () => void;
 };
 
 export function PreviewPane({
@@ -27,6 +31,9 @@ export function PreviewPane({
   frame,
   showPlaceholder,
   isHtml = false,
+  showPlayButton = false,
+  isPlaying = true,
+  onPlayPause,
 }: PreviewPaneProps): JSX.Element {
   const displayAscii = ascii || (showPlaceholder ? ASCII_CAT : "");
   const currentStr = String(frame.current).padStart(2, "0");
@@ -47,6 +54,17 @@ export function PreviewPane({
         <div className="frame-counter">
           frame <strong>{currentStr}</strong> / <strong>{totalStr}</strong>
         </div>
+        {showPlayButton && onPlayPause && (
+          <button
+            type="button"
+            className="tool-btn"
+            aria-label={isPlaying ? "Pause animation" : "Play animation"}
+            onClick={onPlayPause}
+            title={isPlaying ? "Pause" : "Play"}
+          >
+            {isPlaying ? "⏸" : "▶"}
+          </button>
+        )}
         <button type="button" className="re-render" onClick={onRerender}>
           ↻ re-render
         </button>

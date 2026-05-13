@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ascii-art/core": "*",
+    "gifuct-js": "^2.1.2",
     "next": "^15.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
