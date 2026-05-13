@@ -16,6 +16,7 @@ program
   .option("-o, --output <path>", "write to file instead of stdout")
   .option("-c, --clipboard", "copy result to clipboard (suppresses stdout)")
   .option("-C, --color", "colorize output using ANSI truecolor escapes")
+  .option("-e, --edges", "edge-detection mode (Sobel); compatible with --color")
   .action(async (image: string, opts: {
     width: number;
     ramp: string;
@@ -23,6 +24,7 @@ program
     output?: string;
     clipboard?: boolean;
     color?: boolean;
+    edges?: boolean;
   }) => {
     try {
       const { rgba, width, height } = await loadImage(image);
@@ -41,6 +43,7 @@ program
         ramp: opts.ramp,
         invert: !!opts.invert,
         output: outputMode,
+        mode: opts.edges ? 'edges' : 'brightness',
       });
 
       if (opts.output) {
