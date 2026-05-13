@@ -62,11 +62,13 @@ export function useAscii(
           ? opts.customRamp || ' .:-=+*#%@'
           : opts.ramp;
 
+      const isEdges = opts.outputMode === 'edges' || opts.mode === 'edges';
       const ascii = pixelsToAscii(adjustedRgba, file.width, file.height, {
         width: opts.width,
         ramp: rampArg,
         invert: opts.invert,
         output: opts.outputMode === 'color' ? 'html' : 'plain',
+        mode: isEdges ? 'edges' : 'brightness',
       });
 
       const renderMs = Math.round(performance.now() - t0);
@@ -79,7 +81,7 @@ export function useAscii(
         window.clearTimeout(timeoutRef.current);
       }
     };
-  }, [file, adjustedRgba, opts.width, opts.ramp, opts.customRamp, opts.invert, opts.outputMode, opts.nonce]);
+  }, [file, adjustedRgba, opts.width, opts.ramp, opts.customRamp, opts.invert, opts.outputMode, opts.mode, opts.nonce]);
 
   return { ascii: state.ascii, renderMs: state.renderMs, isComputing };
 }

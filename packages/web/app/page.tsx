@@ -22,8 +22,6 @@ interface State {
   customRamp: string;
   invert: boolean;
   outputMode: OutputMode;
-  sobel: boolean;
-  dithering: boolean;
   zoom: number;
   mobileTab: SheetTab;
   renderTick: number;
@@ -37,8 +35,6 @@ type Action =
   | { type: "setCustomRamp"; v: string }
   | { type: "setInvert"; v: boolean }
   | { type: "setOutputMode"; v: OutputMode }
-  | { type: "setSobel"; v: boolean }
-  | { type: "setDithering"; v: boolean }
   | { type: "setZoom"; v: number }
   | { type: "setMobileTab"; v: SheetTab }
   | { type: "rerender" };
@@ -51,8 +47,6 @@ const initialState: State = {
   customRamp: "",
   invert: false,
   outputMode: "plain",
-  sobel: false,
-  dithering: false,
   zoom: 100,
   mobileTab: "basics",
   renderTick: 0,
@@ -67,8 +61,6 @@ function reducer(state: State, action: Action): State {
     case "setCustomRamp": return { ...state, customRamp: action.v };
     case "setInvert": return { ...state, invert: action.v };
     case "setOutputMode": return { ...state, outputMode: action.v };
-    case "setSobel": return { ...state, sobel: action.v };
-    case "setDithering": return { ...state, dithering: action.v };
     case "setZoom": return { ...state, zoom: action.v };
     case "setMobileTab": return { ...state, mobileTab: action.v };
     case "rerender": return { ...state, renderTick: state.renderTick + 1 };
@@ -191,8 +183,6 @@ export default function Page() {
     customRamp: state.customRamp,
     invert: state.invert,
     outputMode: state.outputMode,
-    sobel: state.sobel,
-    dithering: state.dithering,
     renderMs,
   };
 
@@ -205,8 +195,6 @@ export default function Page() {
     customRamp: (v: string) => dispatch({ type: "setCustomRamp", v }),
     invert: (v: boolean) => dispatch({ type: "setInvert", v }),
     outputMode: (v: OutputMode) => dispatch({ type: "setOutputMode", v }),
-    sobel: (v: boolean) => dispatch({ type: "setSobel", v }),
-    dithering: (v: boolean) => dispatch({ type: "setDithering", v }),
     copy: onCopy,
     downloadTxt: onDownloadTxt,
     downloadHtml: onDownloadHtml,
