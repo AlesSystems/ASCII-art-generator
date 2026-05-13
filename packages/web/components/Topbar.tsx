@@ -1,8 +1,15 @@
 import type { JSX } from "react";
+import Link from "next/link";
 
-type TopbarProps = { compact?: boolean };
+type TopbarActive = "convert" | "gallery" | "how-it-works";
 
-export function Topbar({ compact = false }: TopbarProps): JSX.Element {
+type TopbarProps = {
+  compact?: boolean;
+  active?: TopbarActive;
+};
+
+export function Topbar({ compact = false, active }: TopbarProps): JSX.Element {
+  const cls = (key: TopbarActive) => (active === key ? "active" : undefined);
   return (
     <header className="topbar">
       <div className="wordmark">
@@ -11,10 +18,16 @@ export function Topbar({ compact = false }: TopbarProps): JSX.Element {
       </div>
       {!compact && (
         <nav className="nav">
-          <a href="#" className="active">Convert</a>
-          <a href="#">Gallery</a>
-          <a href="#">How it works</a>
-          <a href="#">GitHub ↗</a>
+          <Link href="/" className={cls("convert")}>Convert</Link>
+          <Link href="/gallery" className={cls("gallery")}>Gallery</Link>
+          <Link href="/how-it-works" className={cls("how-it-works")}>How it works</Link>
+          <a
+            href="https://github.com/AlesSystems/ASCII-art-generator"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub ↗
+          </a>
         </nav>
       )}
       <span className="badge-pill">

@@ -244,7 +244,7 @@ export default function Page() {
 
   return (
     <div className="frame">
-      <Topbar />
+      <Topbar active="convert" />
       <div className="main">
         <ControlsPane state={stateForControls} on={on} isAnimated={isAnimated} />
         <PreviewPane
