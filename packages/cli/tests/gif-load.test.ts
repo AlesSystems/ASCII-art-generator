@@ -8,25 +8,30 @@ import { loadImage } from "../src/load-image.js";
 /**
  * A valid 2-frame animated GIF (4×4 px, loop forever).
  *
- * Hand-crafted to match the GIF89a spec:
- *   - 4-color global color table: red, blue, green, white
- *   - Netscape loop extension (infinite)
- *   - Frame 1: delay 10 cs (100 ms)
- *   - Frame 2: delay 20 cs (200 ms)
+ * GIF89a, 2-entry global color table (red, blue), Netscape loop extension.
+ * LZW image data uses a "clear-before-every-literal" encoding so every code
+ * fits in 3 bits — the dictionary never grows past its initial entries, which
+ * keeps the bit-packing trivial and decoder-version-independent. Verified
+ * against libvips 8.15.3.
  *
- * Verified to decode correctly via sharp 0.33.5 on macOS/Linux.
+ * Frame 1: solid red, delay 10 cs (100 ms).
+ * Frame 2: solid blue, delay 20 cs (200 ms).
  */
 function makeAnimatedGifBuffer(): Buffer {
+  // 16 (Clear=4, Literal=N) pairs + EOI(5), packed LSB-first into 3-bit codes.
+  // For N=0 the byte pattern repeats [0x04, 0x41, 0x10] x4, then 0x05 (EOI).
+  // For N=1 the pattern is [0x0C, 0xC3, 0x30] x4, then 0x05.
+  const lzwFrame0 = [0x04, 0x41, 0x10, 0x04, 0x41, 0x10, 0x04, 0x41, 0x10, 0x04, 0x41, 0x10, 0x05];
+  const lzwFrame1 = [0x0C, 0xC3, 0x30, 0x0C, 0xC3, 0x30, 0x0C, 0xC3, 0x30, 0x0C, 0xC3, 0x30, 0x05];
+
   return Buffer.from([
     // GIF89a signature + logical screen descriptor
     0x47, 0x49, 0x46, 0x38, 0x39, 0x61, // "GIF89a"
     0x04, 0x00, 0x04, 0x00,             // logical width=4, height=4
-    0xF1, 0x00, 0x00,                   // GCT: 4 colors, bg=0, aspect=0
-    // Global Color Table (4 entries x 3 bytes)
+    0xF0, 0x00, 0x00,                   // GCT: 2 colors, bg=0, aspect=0
+    // Global Color Table (2 entries x 3 bytes)
     0xFF, 0x00, 0x00,  // index 0: red
     0x00, 0x00, 0xFF,  // index 1: blue
-    0x00, 0xFF, 0x00,  // index 2: green
-    0xFF, 0xFF, 0xFF,  // index 3: white
     // Netscape Application Extension (loop count = 0 = infinite)
     0x21, 0xFF, 0x0B,
     0x4E, 0x45, 0x54, 0x53, 0x43, 0x41, 0x50, 0x45, 0x32, 0x2E, 0x30, // "NETSCAPE2.0"
@@ -43,8 +48,8 @@ function makeAnimatedGifBuffer(): Buffer {
     0x00,                    // no LCT, not interlaced
     // Frame 1: Image Data (LZW min-code-size=2)
     0x02,
-    0x08, // sub-block length = 8
-    0x8C, 0x2D, 0x99, 0x87, 0x2A, 0x1C, 0xDC, 0x33,
+    lzwFrame0.length,
+    ...lzwFrame0,
     0x00,  // block terminator
     // Frame 2: Graphic Control Extension
     0x21, 0xF9, 0x04,
@@ -58,8 +63,8 @@ function makeAnimatedGifBuffer(): Buffer {
     0x00,
     // Frame 2: Image Data
     0x02,
-    0x08,
-    0x8D, 0x2D, 0x99, 0x87, 0x2A, 0x1C, 0xDC, 0x33,
+    lzwFrame1.length,
+    ...lzwFrame1,
     0x00,
     // GIF Trailer
     0x3B,
