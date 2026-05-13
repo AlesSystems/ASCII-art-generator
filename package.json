@@ -9,7 +9,8 @@
     "node": ">=20"
   },
   "workspaces": [
-    "packages/*"
+    "packages/core",
+    "packages/cli"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
