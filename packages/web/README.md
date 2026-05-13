@@ -27,7 +27,7 @@ Deployment is configured at the repo root via [`vercel.json`](../../vercel.json)
 1. Import the repository into Vercel and **leave the Root Directory as the repo root** (do not point it at `packages/web`).
 2. Vercel reads `vercel.json` and runs:
    - `installCommand`: `npm install` (installs all workspaces at the root)
-   - `buildCommand`: `npm run build -w @ascii-art/web`
+   - `buildCommand`: `npm run build -w @ascii-art/core && npm run build -w @ascii-art/web` (core is built first so `dist/index.js` exists when web resolves the workspace import)
    - `outputDirectory`: `packages/web/.next`
 3. No environment variables are required. All routes are statically prerendered.
 
