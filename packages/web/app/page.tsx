@@ -93,6 +93,7 @@ export default function Page() {
     ramp: state.ramp,
     customRamp: state.customRamp,
     invert: state.invert,
+    outputMode: state.outputMode,
     nonce: state.renderTick,
   });
 
@@ -152,9 +153,13 @@ export default function Page() {
   const onDownloadHtml = useCallback(() => {
     if (!ascii) return;
     const base = state.file?.name.replace(/\.[^.]+$/, "") ?? "ascii";
-    const html = `<!doctype html><meta charset="utf-8"><title>${base}</title><pre style="font-family:JetBrains Mono,monospace;font-size:10px;line-height:1;letter-spacing:-0.02em;white-space:pre">${escapeHtml(ascii)}</pre>`;
+    // In color mode, ascii already contains valid <span> markup — use it directly.
+    // In plain mode, HTML-escape the raw text before inserting into <pre>.
+    const preContent =
+      state.outputMode === "color" ? ascii : escapeHtml(ascii);
+    const html = `<!doctype html><meta charset="utf-8"><title>${base}</title><pre style="font-family:JetBrains Mono,monospace;font-size:10px;line-height:1;letter-spacing:-0.02em;white-space:pre">${preContent}</pre>`;
     downloadText(`${base}.html`, html, "text/html");
-  }, [ascii, state.file]);
+  }, [ascii, state.file, state.outputMode]);
 
   const onZoomIn = useCallback(() => {
     dispatch({ type: "setZoom", v: Math.min(200, state.zoom + 10) });
@@ -222,6 +227,7 @@ export default function Page() {
           onRerender={onRerender}
           frame={{ current: 1, total: 1 }}
           showPlaceholder={!state.file}
+          isHtml={state.outputMode === "color"}
         />
         <MobileSheet
           state={stateForControls}

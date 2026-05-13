@@ -13,6 +13,7 @@ type PreviewPaneProps = {
   onRerender: () => void;
   frame: { current: number; total: number };
   showPlaceholder: boolean;
+  isHtml?: boolean;
 };
 
 export function PreviewPane({
@@ -25,6 +26,7 @@ export function PreviewPane({
   onRerender,
   frame,
   showPlaceholder,
+  isHtml = false,
 }: PreviewPaneProps): JSX.Element {
   const displayAscii = ascii || (showPlaceholder ? ASCII_CAT : "");
   const currentStr = String(frame.current).padStart(2, "0");
@@ -57,12 +59,20 @@ export function PreviewPane({
         </div>
         <div className="dither-corner tr" />
         <div className="dither-corner bl" />
-        <pre
-          className="ascii-out"
-          style={{ ["--ascii-zoom" as string]: zoom / 100 }}
-        >
-          {displayAscii}
-        </pre>
+        {isHtml ? (
+          <pre
+            className="ascii-out"
+            style={{ ["--ascii-zoom" as string]: zoom / 100 }}
+            dangerouslySetInnerHTML={{ __html: displayAscii }}
+          />
+        ) : (
+          <pre
+            className="ascii-out"
+            style={{ ["--ascii-zoom" as string]: zoom / 100 }}
+          >
+            {displayAscii}
+          </pre>
+        )}
         <div
           className="sticker"
           style={{ bottom: 16, right: 18, transform: "rotate(3deg)" }}

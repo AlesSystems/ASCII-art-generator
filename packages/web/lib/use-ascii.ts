@@ -66,6 +66,7 @@ export function useAscii(
         width: opts.width,
         ramp: rampArg,
         invert: opts.invert,
+        output: opts.outputMode === 'color' ? 'html' : 'plain',
       });
 
       const renderMs = Math.round(performance.now() - t0);
@@ -78,7 +79,7 @@ export function useAscii(
         window.clearTimeout(timeoutRef.current);
       }
     };
-  }, [file, adjustedRgba, opts.width, opts.ramp, opts.customRamp, opts.invert, opts.nonce]);
+  }, [file, adjustedRgba, opts.width, opts.ramp, opts.customRamp, opts.invert, opts.outputMode, opts.nonce]);
 
   return { ascii: state.ascii, renderMs: state.renderMs, isComputing };
 }
