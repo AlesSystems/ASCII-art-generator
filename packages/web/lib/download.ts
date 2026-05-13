@@ -1,0 +1,48 @@
+'use client';
+
+/**
+ * Copies text to the system clipboard.
+ * Uses the modern Clipboard API when available; falls back to a
+ * temporary textarea + execCommand for older/restricted contexts.
+ */
+export async function copyToClipboard(text: string): Promise<void> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  // Legacy fallback (e.g. non-secure origins, older browsers).
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  // execCommand is deprecated but broadly available as a fallback.
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
+
+/**
+ * Triggers a browser download of text content as a file.
+ *
+ * @param filename  Suggested filename (e.g. "ascii-art.txt")
+ * @param text      The text content to download
+ * @param mime      MIME type (defaults to "text/plain")
+ */
+export function downloadText(
+  filename: string,
+  text: string,
+  mime = 'text/plain'
+): void {
+  const blob = new Blob([text], { type: `${mime};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  // Revoke the object URL after the download has had time to start.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
