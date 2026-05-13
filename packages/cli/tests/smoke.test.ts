@@ -24,12 +24,15 @@ describe("CLI smoke test", () => {
     await writeFile(tmpPath, pngBuffer);
 
     try {
-      const { rgba, width, height } = await loadImage(tmpPath);
+      const loaded = await loadImage(tmpPath);
+      const { rgba, width, height } = loaded.frames[0]!;
 
       // Should be a 4x4 image with 4 channels (RGBA after ensureAlpha)
       expect(width).toBe(4);
       expect(height).toBe(4);
       expect(rgba.length).toBe(4 * 4 * 4); // width * height * channels
+      expect(loaded.isAnimated).toBe(false);
+      expect(loaded.frames).toHaveLength(1);
 
       // Run the full pipeline
       const ascii = pixelsToAscii(rgba, width, height, { width: 4 });
@@ -64,7 +67,8 @@ describe("CLI smoke test", () => {
     await writeFile(tmpPath, pngBuffer);
 
     try {
-      const { rgba, width, height } = await loadImage(tmpPath);
+      const loaded = await loadImage(tmpPath);
+      const { rgba, width, height } = loaded.frames[0]!;
 
       const asciiDefault = pixelsToAscii(rgba, width, height, { width: 8, ramp: "default" });
       const asciiInverted = pixelsToAscii(rgba, width, height, { width: 8, ramp: "inverted" });
