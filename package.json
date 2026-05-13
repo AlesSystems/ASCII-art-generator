@@ -10,7 +10,8 @@
   },
   "workspaces": [
     "packages/core",
-    "packages/cli"
+    "packages/cli",
+    "packages/web"
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
