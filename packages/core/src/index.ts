@@ -1,6 +1,7 @@
 export { RAMPS } from "./ramp.js";
 export type { RampName } from "./ramp.js";
 export { htmlEscape } from "./color.js";
+export { computeContrastStats, type ContrastStats } from "./auto-contrast.js";
 
 import { grayscale } from "./grayscale.js";
 import { downsample, downsampleRgb } from "./downsample.js";
@@ -8,6 +9,7 @@ import { RAMPS, resolveRamp, mapToRamp } from "./ramp.js";
 import { wrapHtmlSpan, wrapAnsi, ANSI_RESET } from "./color.js";
 import { sobel } from "./sobel.js";
 import { directionToChar } from "./edge-ramp.js";
+import { autoContrast, applyBrightness, type ContrastStats } from "./auto-contrast.js";
 import type { RampName } from "./ramp.js";
 
 export type AsciiOutput = 'plain' | 'html' | 'ansi';
@@ -17,9 +19,39 @@ export interface PixelsToAsciiOpts {
   width?: number;
   ramp?: RampName | string;
   invert?: boolean;
-  mode?: AsciiMode;         // default 'brightness'
-  output?: AsciiOutput;     // default 'plain'
-  edgeThreshold?: number;   // default 30 (0–255 scale on Sobel magnitude)
+  mode?: AsciiMode;                  // default 'brightness'
+  output?: AsciiOutput;              // default 'plain'
+  edgeThreshold?: number;            // default 30 (Sobel magnitude)
+  gamma?: boolean;                   // default true
+  autoContrast?: boolean;            // default true
+  autoContrastPercentile?: number;   // default 2 (clip [2,98])
+  brightness?: number;               // default 0, range -100..100
+  frameStats?: ContrastStats;        // optional per-frame stats for GIF stability
+}
+
+function prepareGray(rgba: Uint8ClampedArray, srcW: number, srcH: number, opts: PixelsToAsciiOpts): {
+  gray: Uint8Array;
+  width: number;
+  height: number;
+} {
+  const targetW = opts.width ?? 80;
+  const gamma = opts.gamma ?? true;
+  const useAutoContrast = opts.autoContrast ?? true;
+  const percentile = opts.autoContrastPercentile ?? 2;
+  const brightness = opts.brightness ?? 0;
+
+  const grayFull = grayscale(rgba, { gamma });
+  const { data, width, height } = downsample(grayFull, srcW, srcH, targetW);
+  let work: Uint8Array = data;
+  if (useAutoContrast) {
+    work = autoContrast(work, percentile, opts.frameStats);
+  }
+  if (brightness !== 0) {
+    // applyBrightness mutates — ensure we own the buffer.
+    if (work === data) work = new Uint8Array(data);
+    applyBrightness(work, brightness);
+  }
+  return { gray: work, width, height };
 }
 
 export function pixelsToAscii(
@@ -28,19 +60,17 @@ export function pixelsToAscii(
   height: number,
   opts?: PixelsToAsciiOpts
 ): string {
-  const targetW = opts?.width ?? 80;
-  const rampKey = opts?.ramp ?? "default";
-  const invert = opts?.invert ?? false;
-  const output = opts?.output ?? 'plain';
-  const mode = opts?.mode ?? 'brightness';
-  const edgeThreshold = opts?.edgeThreshold ?? 30;
+  const o = opts ?? {};
+  const targetW = o.width ?? 80;
+  const rampKey = o.ramp ?? "default";
+  const invert = o.invert ?? false;
+  const output = o.output ?? 'plain';
+  const mode = o.mode ?? 'brightness';
+  const edgeThreshold = o.edgeThreshold ?? 30;
 
   // ── Edges mode ──────────────────────────────────────────────────────────────
   if (mode === 'edges') {
-    const gray = grayscale(rgba);
-    const { data: grayData, width: dstW, height: dstH } = downsample(gray, width, height, targetW);
-
-    // Apply Sobel to the downsampled grayscale image
+    const { gray: grayData, width: dstW, height: dstH } = prepareGray(rgba, width, height, o);
     const { magnitude, direction } = sobel(grayData, dstW, dstH);
 
     if (output === 'plain') {
@@ -56,7 +86,6 @@ export function pixelsToAscii(
       return lines.join("\n");
     }
 
-    // Color edges — sample RGB per cell for colorization
     const { rgb } = downsampleRgb(rgba, width, height, targetW);
     const lines: string[] = [];
 
@@ -100,12 +129,10 @@ export function pixelsToAscii(
     rampStr = rampStr.split("").reverse().join("");
   }
 
-  // Fast path — plain output is byte-identical to legacy behavior
-  if (output === 'plain') {
-    const gray = grayscale(rgba);
-    const { data, width: dstW, height: dstH } = downsample(gray, width, height, targetW);
-    const chars = mapToRamp(data, rampStr);
+  const { gray: grayData, width: dstW, height: dstH } = prepareGray(rgba, width, height, o);
+  const chars = mapToRamp(grayData, rampStr);
 
+  if (output === 'plain') {
     const lines: string[] = [];
     for (let row = 0; row < dstH; row++) {
       lines.push(chars.slice(row * dstW, row * dstW + dstW).join(""));
@@ -113,12 +140,7 @@ export function pixelsToAscii(
     return lines.join("\n");
   }
 
-  // Color paths — need per-cell RGB + grayscale for ramp lookup
-  const gray = grayscale(rgba);
-  const { data: grayData, width: dstW, height: dstH } = downsample(gray, width, height, targetW);
   const { rgb } = downsampleRgb(rgba, width, height, targetW);
-  const chars = mapToRamp(grayData, rampStr);
-
   const lines: string[] = [];
 
   if (output === 'html') {
