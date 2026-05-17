@@ -103,7 +103,50 @@ Add `mode: 'brightness' | 'edges'`. For `'edges'`:
 - **CLI**: `sharp(path, { animated: true }).raw()` returns frames stacked vertically; slice and convert each.
 - **UI**: play/pause button, "Download as animated HTML" (single self-contained file that cycles frames).
 
-**Deferred** (out of scope for now): Floyd-Steinberg dithering, tweet-sized mode.
+**Deferred** (out of scope for now): tweet-sized mode.
+
+---
+
+## Phase 4d — Quality v2
+
+**Goal**: better default output for real-world photos and GIFs without
+adding new dependencies. Built on top of phase 4c.
+
+**Lives in**: `packages/core/` (algorithm), `packages/web/` and `packages/cli/` (exposure).
+
+**What shipped**:
+
+1. **Gamma-correct luminance** (`grayscale.ts`) — sRGB pixels are linearized
+   before Rec.709 weighting and re-encoded to sRGB. Equal-RGB pixels round-trip
+   unchanged; pure colors no longer look crushed. Gated by `opts.gamma` (default true).
+2. **Percentile auto-contrast** (`auto-contrast.ts`) — 256-bucket histogram, clip
+   `[N, 100-N]` percentile (default 2), linear stretch to [0,255]. Pulls the full
+   ramp out of low-contrast photos. Gated by `opts.autoContrast` (default true).
+3. **Brightness offset** — additive `[-100..100]` mapped to `[-255..255]` post
+   auto-contrast. Surfaced as a Brightness slider in the web UI and `--brightness`
+   in the CLI.
+4. **Floyd–Steinberg dithering** (`dither.ts`) — error-diffusion quantizer on a
+   Float32 working buffer (7/16 right, 3/16 below-left, 5/16 below, 1/16
+   below-right). Dramatic improvement for smooth gradients. Gated by `opts.dither`
+   (default false; opt-in toggle in UI / `--dither` in CLI).
+5. **Hybrid mode** (`mode: 'hybrid'`) — brightness ramp in flat regions, Sobel
+   edge characters where the gradient is strong. Most recognizable single-image
+   output for portraits and line art.
+6. **Normalized Sobel threshold** — magnitudes scaled to 0..255 per image, so
+   `edgeThreshold` reads consistently across image sizes and GIF frames.
+7. **Per-GIF frame stability** (`computeFrameStats`) — callers compute the
+   contrast window once across every frame and pass it as `opts.frameStats` per
+   frame. Auto-contrast stretches to the same window across the animation →
+   no more brightness pulse on playback.
+
+**Legacy escape hatch**: setting `{ gamma: false, autoContrast: false, dither: false }`
+on the core call (or `--legacy` on the CLI) produces byte-identical output to the
+pre-v2 algorithm. Used by the legacy fixture tests.
+
+**Exit criterion**: `cd packages/core && npm test` passes (78 tests). Web build
+succeeds with `sharp` absent from the bundle. CLI smoke test for `--mode hybrid`
+and `--dither` passes. Manual: a low-contrast photo uses the full ramp width with
+defaults; a GIF with brightness-varying frames plays back without pulsing.
 
 ---
 
