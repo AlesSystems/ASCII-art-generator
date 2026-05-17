@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import type { RampName } from '@ascii-art/core';
-import { applyContrast } from './contrast';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { RampName, ContrastStats, PixelsToAsciiOpts } from '@ascii-art/core';
+import { computeFrameStats } from '@ascii-art/core';
 import type { AsciiOpts, LoadedFile } from './types';
 import type { WorkerRequest, WorkerResponse } from './ascii-worker';
 
@@ -14,10 +14,9 @@ import type { WorkerRequest, WorkerResponse } from './ascii-worker';
  * thread. Stale responses (from superseded requests) are discarded via the
  * incrementing `id` field.
  *
- * Returns:
- *   frames      — array of ASCII strings, one per frame (empty before first render)
- *   renderMs    — milliseconds for the last conversion batch (null until first)
- *   isComputing — true while a conversion is in-flight
+ * Per-GIF `frameStats` are computed once when the file loads (or its width
+ * changes), so all frames share the same auto-contrast window — eliminates
+ * the brightness pulse that per-frame stretching produced.
  */
 export function useAscii(
   file: LoadedFile | null,
@@ -35,7 +34,6 @@ export function useAscii(
   const requestIdRef = useRef(0);
   const timeoutRef = useRef<number | null>(null);
 
-  // Spawn the worker on mount, terminate on unmount.
   useEffect(() => {
     const worker = new Worker(
       new URL('./ascii-worker.ts', import.meta.url),
@@ -45,7 +43,6 @@ export function useAscii(
 
     worker.onmessage = (evt: MessageEvent<WorkerResponse>) => {
       const { id, ascii, renderMs: ms } = evt.data;
-      // Discard stale responses from superseded requests
       if (id !== requestIdRef.current) return;
       setFrames(ascii);
       setRenderMs(ms);
@@ -63,7 +60,24 @@ export function useAscii(
     };
   }, []);
 
-  // Re-run whenever file or opts change (debounced 120ms).
+  // Compute combined frameStats over the whole file so every frame uses the
+  // same auto-contrast window. Only depends on the file + target width + gamma.
+  const frameStats: ContrastStats | undefined = useMemo(() => {
+    if (!file || file.frames.length === 0) return undefined;
+    let lo = 255;
+    let hi = 0;
+    for (const f of file.frames) {
+      const s = computeFrameStats(f.image.data, f.image.width, f.image.height, {
+        width: opts.width,
+        gamma: opts.gamma,
+      });
+      if (s.lo < lo) lo = s.lo;
+      if (s.hi > hi) hi = s.hi;
+    }
+    if (hi <= lo) return { lo: 0, hi: 255 };
+    return { lo, hi };
+  }, [file, opts.width, opts.gamma]);
+
   useEffect(() => {
     if (!file) {
       setFrames([]);
@@ -87,27 +101,34 @@ export function useAscii(
           ? opts.customRamp || ' .:-=+*#%@'
           : opts.ramp;
 
-      const isEdges = opts.outputMode === 'edges' || opts.mode === 'edges';
-      const coreOpts = {
+      // Resolve outputMode to core's (mode, output) pair.
+      const mode: PixelsToAsciiOpts['mode'] =
+        opts.outputMode === 'edges' ? 'edges'
+        : opts.outputMode === 'hybrid' ? 'hybrid'
+        : 'brightness';
+      const output: PixelsToAsciiOpts['output'] =
+        opts.outputMode === 'color' ? 'html' : 'plain';
+
+      const coreOpts: PixelsToAsciiOpts = {
         width: opts.width,
         ramp: rampArg,
         invert: opts.invert,
-        output: (opts.outputMode === 'color' ? 'html' : 'plain') as 'html' | 'plain',
-        mode: (isEdges ? 'edges' : 'brightness') as 'edges' | 'brightness',
+        output,
+        mode,
+        gamma: opts.gamma,
+        autoContrast: opts.autoContrast,
+        dither: opts.dither,
+        brightness: opts.brightness,
       };
 
-      // Apply contrast adjustment to each frame's RGBA before sending to worker.
-      const workerFrames = file.frames.map((f) => {
-        const adjusted = applyContrast(f.image.data, opts.contrast);
-        return {
-          rgba: new Uint8ClampedArray(adjusted),
-          width: f.image.width,
-          height: f.image.height,
-        };
-      });
+      const workerFrames = file.frames.map((f) => ({
+        rgba: new Uint8ClampedArray(f.image.data),
+        width: f.image.width,
+        height: f.image.height,
+      }));
 
       const id = ++requestIdRef.current;
-      const request: WorkerRequest = { id, frames: workerFrames, opts: coreOpts };
+      const request: WorkerRequest = { id, frames: workerFrames, opts: coreOpts, frameStats };
       worker.postMessage(request);
     }, 120);
 
@@ -122,10 +143,13 @@ export function useAscii(
     opts.ramp,
     opts.customRamp,
     opts.invert,
-    opts.contrast,
+    opts.brightness,
+    opts.autoContrast,
+    opts.dither,
+    opts.gamma,
     opts.outputMode,
-    opts.mode,
     opts.nonce,
+    frameStats,
   ]);
 
   return { frames, renderMs, isComputing };

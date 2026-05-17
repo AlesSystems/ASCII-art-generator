@@ -4,7 +4,7 @@ export type { RampName };
 
 export type Ramp = RampName | 'custom';
 
-export type OutputMode = 'plain' | 'color' | 'edges';
+export type OutputMode = 'plain' | 'color' | 'edges' | 'hybrid';
 
 export interface FrameImage {
   image: ImageData;
@@ -22,12 +22,14 @@ export interface LoadedFile {
 }
 
 export interface AsciiOpts {
-  width: number;           // target char width 40..200
+  width: number;                // target char width 40..200
   ramp: RampName | 'custom';
   customRamp: string;
   invert: boolean;
-  contrast: number;        // 0..200, 100 = identity
-  outputMode?: OutputMode; // controls color vs plain vs edges output
-  mode?: 'brightness' | 'edges'; // passed directly to core
-  nonce?: number;          // bump to force a re-render without changing inputs
+  brightness: number;           // -100..100, 0 = identity
+  autoContrast: boolean;        // percentile histogram stretch
+  dither: boolean;              // Floyd–Steinberg
+  gamma: boolean;               // gamma-correct luminance
+  outputMode?: OutputMode;      // controls color vs plain vs edges vs hybrid
+  nonce?: number;               // bump to force a re-render without changing inputs
 }
