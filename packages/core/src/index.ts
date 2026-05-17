@@ -14,7 +14,7 @@ import { floydSteinbergMap } from "./dither.js";
 import type { RampName } from "./ramp.js";
 
 export type AsciiOutput = 'plain' | 'html' | 'ansi';
-export type AsciiMode = 'brightness' | 'edges';
+export type AsciiMode = 'brightness' | 'edges' | 'hybrid';
 
 export interface PixelsToAsciiOpts {
   width?: number;
@@ -22,7 +22,7 @@ export interface PixelsToAsciiOpts {
   invert?: boolean;
   mode?: AsciiMode;                  // default 'brightness'
   output?: AsciiOutput;              // default 'plain'
-  edgeThreshold?: number;            // default 30 (Sobel magnitude)
+  edgeThreshold?: number;            // default 30 (normalized 0–255)
   gamma?: boolean;                   // default true
   autoContrast?: boolean;            // default true
   autoContrastPercentile?: number;   // default 2 (clip [2,98])
@@ -49,11 +49,25 @@ function prepareGray(rgba: Uint8ClampedArray, srcW: number, srcH: number, opts: 
     work = autoContrast(work, percentile, opts.frameStats);
   }
   if (brightness !== 0) {
-    // applyBrightness mutates — ensure we own the buffer.
     if (work === data) work = new Uint8Array(data);
     applyBrightness(work, brightness);
   }
   return { gray: work, width, height };
+}
+
+// Normalize raw Sobel magnitudes to a stable 0–255 scale so the same
+// edgeThreshold reads consistently across image sizes and GIF frames.
+function normalizeMagnitudes(magnitude: Float32Array): Float32Array {
+  let max = 0;
+  for (let i = 0; i < magnitude.length; i++) {
+    const v = magnitude[i]!;
+    if (v > max) max = v;
+  }
+  if (max === 0) return magnitude;
+  const scale = 255 / max;
+  const out = new Float32Array(magnitude.length);
+  for (let i = 0; i < magnitude.length; i++) out[i] = magnitude[i]! * scale;
+  return out;
 }
 
 export function pixelsToAscii(
@@ -70,72 +84,43 @@ export function pixelsToAscii(
   const mode = o.mode ?? 'brightness';
   const edgeThreshold = o.edgeThreshold ?? 30;
 
-  // ── Edges mode ──────────────────────────────────────────────────────────────
-  if (mode === 'edges') {
-    const { gray: grayData, width: dstW, height: dstH } = prepareGray(rgba, width, height, o);
-    const { magnitude, direction } = sobel(grayData, dstW, dstH);
-
-    if (output === 'plain') {
-      const lines: string[] = [];
-      for (let row = 0; row < dstH; row++) {
-        let line = '';
-        for (let col = 0; col < dstW; col++) {
-          const idx = row * dstW + col;
-          line += directionToChar(direction[idx]!, magnitude[idx]!, edgeThreshold);
-        }
-        lines.push(line);
-      }
-      return lines.join("\n");
-    }
-
-    const { rgb } = downsampleRgb(rgba, width, height, targetW);
-    const lines: string[] = [];
-
-    if (output === 'html') {
-      for (let row = 0; row < dstH; row++) {
-        let line = '';
-        for (let col = 0; col < dstW; col++) {
-          const idx = row * dstW + col;
-          const ch = directionToChar(direction[idx]!, magnitude[idx]!, edgeThreshold);
-          const rgbBase = idx * 3;
-          const r = rgb[rgbBase]!;
-          const g = rgb[rgbBase + 1]!;
-          const b = rgb[rgbBase + 2]!;
-          line += wrapHtmlSpan(ch, r, g, b);
-        }
-        lines.push(line);
-      }
-      return lines.join("\n");
-    }
-
-    // output === 'ansi'
-    for (let row = 0; row < dstH; row++) {
-      let line = '';
-      for (let col = 0; col < dstW; col++) {
-        const idx = row * dstW + col;
-        const ch = directionToChar(direction[idx]!, magnitude[idx]!, edgeThreshold);
-        const rgbBase = idx * 3;
-        const r = rgb[rgbBase]!;
-        const g = rgb[rgbBase + 1]!;
-        const b = rgb[rgbBase + 2]!;
-        line += wrapAnsi(ch, r, g, b);
-      }
-      lines.push(line + ANSI_RESET);
-    }
-    return lines.join("\n");
-  }
-
-  // ── Brightness mode ──────────────────────────────────────────────────────────
-  let rampStr = resolveRamp(rampKey);
-  if (invert) {
-    rampStr = rampStr.split("").reverse().join("");
-  }
-
   const { gray: grayData, width: dstW, height: dstH } = prepareGray(rgba, width, height, o);
-  const chars = (o.dither ?? false)
-    ? mapIndicesToChars(floydSteinbergMap(grayData, dstW, dstH, rampStr.length), rampStr)
-    : mapToRamp(grayData, rampStr);
+  const cellCount = dstW * dstH;
 
+  // Per-cell character selection — single source of truth for all modes.
+  let chars: string[];
+
+  if (mode === 'edges') {
+    const { magnitude, direction } = sobel(grayData, dstW, dstH);
+    const normMag = normalizeMagnitudes(magnitude);
+    chars = new Array(cellCount);
+    for (let i = 0; i < cellCount; i++) {
+      chars[i] = directionToChar(direction[i]!, normMag[i]!, edgeThreshold);
+    }
+  } else {
+    // Resolve ramp once for brightness + hybrid modes.
+    let rampStr = resolveRamp(rampKey);
+    if (invert) rampStr = rampStr.split("").reverse().join("");
+
+    const brightChars = (o.dither ?? false)
+      ? mapIndicesToChars(floydSteinbergMap(grayData, dstW, dstH, rampStr.length), rampStr)
+      : mapToRamp(grayData, rampStr);
+
+    if (mode === 'hybrid') {
+      const { magnitude, direction } = sobel(grayData, dstW, dstH);
+      const normMag = normalizeMagnitudes(magnitude);
+      chars = new Array(cellCount);
+      for (let i = 0; i < cellCount; i++) {
+        chars[i] = normMag[i]! >= edgeThreshold
+          ? directionToChar(direction[i]!, normMag[i]!, edgeThreshold)
+          : brightChars[i]!;
+      }
+    } else {
+      chars = brightChars;
+    }
+  }
+
+  // Render — single rendering pass keyed by `output`.
   if (output === 'plain') {
     const lines: string[] = [];
     for (let row = 0; row < dstH; row++) {
@@ -153,11 +138,7 @@ export function pixelsToAscii(
       for (let col = 0; col < dstW; col++) {
         const idx = row * dstW + col;
         const rgbBase = idx * 3;
-        const r = rgb[rgbBase]!;
-        const g = rgb[rgbBase + 1]!;
-        const b = rgb[rgbBase + 2]!;
-        const ch = chars[idx]!;
-        line += wrapHtmlSpan(ch, r, g, b);
+        line += wrapHtmlSpan(chars[idx]!, rgb[rgbBase]!, rgb[rgbBase + 1]!, rgb[rgbBase + 2]!);
       }
       lines.push(line);
     }
@@ -170,11 +151,7 @@ export function pixelsToAscii(
     for (let col = 0; col < dstW; col++) {
       const idx = row * dstW + col;
       const rgbBase = idx * 3;
-      const r = rgb[rgbBase]!;
-      const g = rgb[rgbBase + 1]!;
-      const b = rgb[rgbBase + 2]!;
-      const ch = chars[idx]!;
-      line += wrapAnsi(ch, r, g, b);
+      line += wrapAnsi(chars[idx]!, rgb[rgbBase]!, rgb[rgbBase + 1]!, rgb[rgbBase + 2]!);
     }
     lines.push(line + ANSI_RESET);
   }
