@@ -1,6 +1,33 @@
+import { grayscale } from "./grayscale.js";
+import { downsample } from "./downsample.js";
+
 export interface ContrastStats {
   lo: number;
   hi: number;
+}
+
+export interface FrameStatsOpts {
+  width?: number;          // default 80 — match the conversion's target width
+  gamma?: boolean;         // default true
+  percentile?: number;     // default 2
+}
+
+// Run the same gamma+grayscale+downsample pipeline a conversion would use,
+// then return the contrast stats. Callers loop this over every GIF frame and
+// reduce to a combined { lo: min, hi: max } so the per-frame autoContrast
+// stretch lands consistently across the whole animation.
+export function computeFrameStats(
+  rgba: Uint8ClampedArray,
+  srcW: number,
+  srcH: number,
+  opts?: FrameStatsOpts
+): ContrastStats {
+  const targetW = opts?.width ?? 80;
+  const gamma = opts?.gamma ?? true;
+  const percentile = opts?.percentile ?? 2;
+  const grayFull = grayscale(rgba, { gamma });
+  const { data } = downsample(grayFull, srcW, srcH, targetW);
+  return computeContrastStats(data, percentile);
 }
 
 // Walk the histogram inward from both ends to find the value below which

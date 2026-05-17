@@ -1,7 +1,7 @@
 export { RAMPS } from "./ramp.js";
 export type { RampName } from "./ramp.js";
 export { htmlEscape } from "./color.js";
-export { computeContrastStats, type ContrastStats } from "./auto-contrast.js";
+export { computeContrastStats, computeFrameStats, type ContrastStats, type FrameStatsOpts } from "./auto-contrast.js";
 
 import { grayscale } from "./grayscale.js";
 import { downsample, downsampleRgb } from "./downsample.js";
