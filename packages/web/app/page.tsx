@@ -19,7 +19,10 @@ type SheetTab = "basics" | "advanced" | "export";
 interface State {
   file: LoadedFile | null;
   width: number;
-  contrast: number;
+  brightness: number;
+  autoContrast: boolean;
+  dither: boolean;
+  gamma: boolean;
   ramp: RampName;
   customRamp: string;
   invert: boolean;
@@ -32,7 +35,10 @@ interface State {
 type Action =
   | { type: "setFile"; file: LoadedFile | null }
   | { type: "setWidth"; v: number }
-  | { type: "setContrast"; v: number }
+  | { type: "setBrightness"; v: number }
+  | { type: "setAutoContrast"; v: boolean }
+  | { type: "setDither"; v: boolean }
+  | { type: "setGamma"; v: boolean }
   | { type: "setRamp"; v: RampName }
   | { type: "setCustomRamp"; v: string }
   | { type: "setInvert"; v: boolean }
@@ -44,7 +50,10 @@ type Action =
 const initialState: State = {
   file: null,
   width: 120,
-  contrast: 100,
+  brightness: 0,
+  autoContrast: true,
+  dither: false,
+  gamma: true,
   ramp: "default",
   customRamp: "",
   invert: false,
@@ -58,7 +67,10 @@ function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "setFile": return { ...state, file: action.file, isPlaying: true };
     case "setWidth": return { ...state, width: action.v };
-    case "setContrast": return { ...state, contrast: action.v };
+    case "setBrightness": return { ...state, brightness: action.v };
+    case "setAutoContrast": return { ...state, autoContrast: action.v };
+    case "setDither": return { ...state, dither: action.v };
+    case "setGamma": return { ...state, gamma: action.v };
     case "setRamp": return { ...state, ramp: action.v };
     case "setCustomRamp": return { ...state, customRamp: action.v };
     case "setInvert": return { ...state, invert: action.v };
@@ -84,7 +96,10 @@ export default function Page() {
   // useAscii now returns frames (one per GIF frame, or one for static images)
   const { frames, renderMs, isComputing } = useAscii(state.file, {
     width: state.width,
-    contrast: state.contrast,
+    brightness: state.brightness,
+    autoContrast: state.autoContrast,
+    dither: state.dither,
+    gamma: state.gamma,
     ramp: state.ramp,
     customRamp: state.customRamp,
     invert: state.invert,
@@ -213,7 +228,10 @@ export default function Page() {
         }
       : null,
     width: state.width,
-    contrast: state.contrast,
+    brightness: state.brightness,
+    autoContrast: state.autoContrast,
+    dither: state.dither,
+    gamma: state.gamma,
     ramp: state.ramp,
     customRamp: state.customRamp,
     invert: state.invert,
@@ -225,7 +243,10 @@ export default function Page() {
     files: onFiles,
     removeFile: onRemoveFile,
     width: (v: number) => dispatch({ type: "setWidth", v }),
-    contrast: (v: number) => dispatch({ type: "setContrast", v }),
+    brightness: (v: number) => dispatch({ type: "setBrightness", v }),
+    autoContrast: (v: boolean) => dispatch({ type: "setAutoContrast", v }),
+    dither: (v: boolean) => dispatch({ type: "setDither", v }),
+    gamma: (v: boolean) => dispatch({ type: "setGamma", v }),
     ramp: (v: RampName) => dispatch({ type: "setRamp", v }),
     customRamp: (v: string) => dispatch({ type: "setCustomRamp", v }),
     invert: (v: boolean) => dispatch({ type: "setInvert", v }),

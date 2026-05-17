@@ -10,7 +10,7 @@ import { Segmented } from "@/components/Segmented";
 import { ActionButtons } from "@/components/ActionButtons";
 
 type RampName = "default" | "inverted" | "extended" | "custom";
-type OutputMode = "plain" | "color" | "edges";
+type OutputMode = "plain" | "color" | "edges" | "hybrid";
 
 type ControlsPaneProps = {
   state: {
@@ -22,7 +22,10 @@ type ControlsPaneProps = {
       thumbnailUrl: string;
     } | null;
     width: number;
-    contrast: number;
+    brightness: number;
+    autoContrast: boolean;
+    dither: boolean;
+    gamma: boolean;
     ramp: RampName;
     customRamp: string;
     invert: boolean;
@@ -33,7 +36,10 @@ type ControlsPaneProps = {
     files: (files: FileList) => void;
     removeFile: () => void;
     width: (v: number) => void;
-    contrast: (v: number) => void;
+    brightness: (v: number) => void;
+    autoContrast: (v: boolean) => void;
+    dither: (v: boolean) => void;
+    gamma: (v: boolean) => void;
     ramp: (v: RampName) => void;
     customRamp: (s: string) => void;
     invert: (v: boolean) => void;
@@ -57,6 +63,7 @@ const OUTPUT_MODE_OPTIONS: { value: OutputMode; label: string }[] = [
   { value: "plain", label: "Plain" },
   { value: "color", label: "Color" },
   { value: "edges", label: "Edges" },
+  { value: "hybrid", label: "Hybrid" },
 ];
 
 export function ControlsPane({ state, on, isAnimated = false }: ControlsPaneProps): JSX.Element {
@@ -90,7 +97,7 @@ export function ControlsPane({ state, on, isAnimated = false }: ControlsPaneProp
       <div className="group">
         <div className="section-label">Geometry</div>
         <Slider label="Width" value={state.width} suffix=" ch" min={40} max={200} onChange={on.width} />
-        <Slider label="Contrast" value={state.contrast} suffix="%" min={0} max={200} onChange={on.contrast} />
+        <Slider label="Brightness" value={state.brightness} suffix="" min={-100} max={100} onChange={on.brightness} />
       </div>
 
       <hr className="hr" />
@@ -112,6 +119,24 @@ export function ControlsPane({ state, on, isAnimated = false }: ControlsPaneProp
       {/* Adjustments */}
       <div className="group">
         <div className="section-label">Adjustments</div>
+        <ToggleRow
+          label="Auto contrast"
+          sub="stretches histogram for full ramp coverage"
+          on={state.autoContrast}
+          onChange={on.autoContrast}
+        />
+        <ToggleRow
+          label="Dither"
+          sub="Floyd–Steinberg; best for smooth gradients"
+          on={state.dither}
+          onChange={on.dither}
+        />
+        <ToggleRow
+          label="Gamma correct"
+          sub="perceptually accurate luminance"
+          on={state.gamma}
+          onChange={on.gamma}
+        />
         <ToggleRow
           label="Invert colors"
           sub="dark pixels become light chars"
