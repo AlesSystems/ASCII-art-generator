@@ -5,11 +5,12 @@ export { computeContrastStats, type ContrastStats } from "./auto-contrast.js";
 
 import { grayscale } from "./grayscale.js";
 import { downsample, downsampleRgb } from "./downsample.js";
-import { RAMPS, resolveRamp, mapToRamp } from "./ramp.js";
+import { RAMPS, resolveRamp, mapToRamp, mapIndicesToChars } from "./ramp.js";
 import { wrapHtmlSpan, wrapAnsi, ANSI_RESET } from "./color.js";
 import { sobel } from "./sobel.js";
 import { directionToChar } from "./edge-ramp.js";
 import { autoContrast, applyBrightness, type ContrastStats } from "./auto-contrast.js";
+import { floydSteinbergMap } from "./dither.js";
 import type { RampName } from "./ramp.js";
 
 export type AsciiOutput = 'plain' | 'html' | 'ansi';
@@ -25,6 +26,7 @@ export interface PixelsToAsciiOpts {
   gamma?: boolean;                   // default true
   autoContrast?: boolean;            // default true
   autoContrastPercentile?: number;   // default 2 (clip [2,98])
+  dither?: boolean;                  // default false (Floyd–Steinberg)
   brightness?: number;               // default 0, range -100..100
   frameStats?: ContrastStats;        // optional per-frame stats for GIF stability
 }
@@ -130,7 +132,9 @@ export function pixelsToAscii(
   }
 
   const { gray: grayData, width: dstW, height: dstH } = prepareGray(rgba, width, height, o);
-  const chars = mapToRamp(grayData, rampStr);
+  const chars = (o.dither ?? false)
+    ? mapIndicesToChars(floydSteinbergMap(grayData, dstW, dstH, rampStr.length), rampStr)
+    : mapToRamp(grayData, rampStr);
 
   if (output === 'plain') {
     const lines: string[] = [];

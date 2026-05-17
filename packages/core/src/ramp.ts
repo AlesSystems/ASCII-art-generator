@@ -23,3 +23,14 @@ export function mapToRamp(gray: Uint8Array, ramp: string): string[] {
   }
   return rows;
 }
+
+export function mapIndicesToChars(indices: Uint8Array, ramp: string): string[] {
+  const len = ramp.length;
+  if (len === 0) throw new Error("ramp must be non-empty");
+  const out: string[] = new Array(indices.length);
+  for (let i = 0; i < indices.length; i++) {
+    const idx = Math.min(len - 1, indices[i]!);
+    out[i] = ramp[idx]!;
+  }
+  return out;
+}
