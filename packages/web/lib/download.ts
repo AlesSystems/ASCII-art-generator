@@ -37,6 +37,28 @@ export async function copyToClipboard(text: string): Promise<void> {
 }
 
 /**
+ * Copies HTML content to the clipboard with a plain-text fallback.
+ * Writes both text/html and text/plain so HTML-aware editors keep colors
+ * while plain editors receive the underlying ASCII characters.
+ */
+export async function copyRichToClipboard(html: string, plain: string): Promise<void> {
+  if (
+    typeof navigator !== 'undefined' &&
+    typeof ClipboardItem !== 'undefined' &&
+    navigator.clipboard?.write
+  ) {
+    const item = new ClipboardItem({
+      'text/html': new Blob([html], { type: 'text/html' }),
+      'text/plain': new Blob([plain], { type: 'text/plain' }),
+    });
+    await navigator.clipboard.write([item]);
+    return;
+  }
+  // Fall back to plain text when ClipboardItem / clipboard.write is unavailable.
+  await copyToClipboard(plain);
+}
+
+/**
  * Triggers a browser download of text content as a file.
  *
  * @param filename  Suggested filename (e.g. "ascii-art.txt")

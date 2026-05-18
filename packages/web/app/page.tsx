@@ -10,7 +10,7 @@ import { loadImage, revokeThumbnail } from "@/lib/canvas-loader";
 import { useAscii } from "@/lib/use-ascii";
 import { useAnimation } from "@/lib/use-animation";
 import { buildAnimatedHtml } from "@/lib/animated-html";
-import { copyToClipboard, downloadText, htmlToPlainAscii } from "@/lib/download";
+import { copyToClipboard, copyRichToClipboard, downloadText, htmlToPlainAscii } from "@/lib/download";
 import type { LoadedFile, OutputMode } from "@/lib/types";
 
 type RampName = "default" | "inverted" | "extended" | "custom";
@@ -161,10 +161,12 @@ export default function Page() {
 
   const onCopy = useCallback(async () => {
     if (!currentAscii) return;
-    const plain =
-      state.outputMode === "color" ? htmlToPlainAscii(currentAscii) : currentAscii;
     try {
-      await copyToClipboard(plain);
+      if (state.outputMode === "color") {
+        await copyRichToClipboard(currentAscii, htmlToPlainAscii(currentAscii));
+      } else {
+        await copyToClipboard(currentAscii);
+      }
     } catch {
       setError("Couldn't copy. Try selecting and copying manually.");
     }
@@ -173,10 +175,8 @@ export default function Page() {
   const onDownloadTxt = useCallback(() => {
     if (!currentAscii) return;
     const base = state.file?.name.replace(/\.[^.]+$/, "") ?? "ascii";
-    const plain =
-      state.outputMode === "color" ? htmlToPlainAscii(currentAscii) : currentAscii;
-    downloadText(`${base}.txt`, plain);
-  }, [currentAscii, state.file, state.outputMode]);
+    downloadText(`${base}.txt`, currentAscii);
+  }, [currentAscii, state.file]);
 
   const onDownloadHtml = useCallback(() => {
     if (frames.length === 0) return;
