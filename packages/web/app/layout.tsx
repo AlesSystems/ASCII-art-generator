@@ -33,6 +33,10 @@ const vt323 = VT323({
 export const metadata: Metadata = {
   title: 'ASCII.ART — image to ASCII converter',
   description: 'Convert images to ASCII art in your browser. No uploads, all local.',
+  icons: {
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/apple-touch-icon.svg', type: 'image/svg+xml' }],
+  },
 };
 
 export const viewport: Viewport = {
